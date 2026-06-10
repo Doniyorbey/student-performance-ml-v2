@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
+from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -182,9 +183,13 @@ def get_preprocessor(
 
 
 def get_models() -> OrderedDict[str, tuple[Any, dict[str, list[Any]]]]:
-    """Six classifiers with deliberately compact grids for Streamlit Cloud."""
+    """Six classifiers plus a dummy baseline with compact grids for Streamlit Cloud."""
     return OrderedDict(
         {
+            "Dummy Baseline": (
+                DummyClassifier(strategy="most_frequent", random_state=RANDOM_STATE),
+                {},
+            ),
             "Logistic Regression": (
                 LogisticRegression(
                     max_iter=3000,
