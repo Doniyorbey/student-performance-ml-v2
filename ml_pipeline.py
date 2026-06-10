@@ -195,11 +195,12 @@ def get_models() -> OrderedDict[str, tuple[Any, dict[str, list[Any]]]]:
                     max_iter=3000,
                     class_weight="balanced",
                     solver="liblinear",
+                    penalty="l2",
                     random_state=RANDOM_STATE,
                 ),
                 {
                     "clf__C": [0.01, 0.1, 1.0, 10.0],
-                    "clf__l1_ratio": [0.0, 1.0],
+                    "clf__penalty": ["l1", "l2"],
                 },
             ),
             "Decision Tree": (
@@ -436,7 +437,7 @@ def build_optuna_estimator(model_name: str, params: dict[str, Any]) -> Any:
     if model_name == "Logistic Regression":
         return LogisticRegression(
             C=float(params["C"]),
-            l1_ratio=float(params["l1_ratio"]),
+            penalty=str(params["penalty"]),
             solver="liblinear",
             max_iter=3000,
             class_weight="balanced",
