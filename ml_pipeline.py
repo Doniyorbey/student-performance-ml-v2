@@ -70,7 +70,7 @@ def _find_dataset(explicit_path: str | Path | None = None) -> Path:
         path = Path(explicit_path)
         if path.exists():
             return path
-        raise FileNotFoundError(f"Dataset topilmadi: {path}")
+        raise FileNotFoundError(f"Dataset not found: {path}")
 
     root = Path(__file__).resolve().parent
     for candidate in DATA_CANDIDATES:
@@ -85,8 +85,8 @@ def _find_dataset(explicit_path: str | Path | None = None) -> Path:
         return student_csvs[0]
 
     raise FileNotFoundError(
-        "Dataset topilmadi. Repository ichiga student-mat.csv faylini qo'ying "
-        "yoki data/student-mat.csv yo'lidan foydalaning."
+        "Dataset not found. Place student-mat.csv in the repository root "
+        "or use data/student-mat.csv."
     )
 
 
@@ -98,8 +98,8 @@ def load_data(path: str | Path | None = None) -> pd.DataFrame:
     if "target" not in df.columns:
         if "G3" not in df.columns:
             raise ValueError(
-                "Datasetda target ham, G3 ham yo'q. target ustunini qo'shing "
-                "yoki UCI student-mat.csv faylidan foydalaning."
+                "Neither target nor G3 exists in the dataset. Add a target column "
+                "or use the UCI student-mat.csv file."
             )
         df["target"] = (
             pd.to_numeric(df["G3"], errors="raise") >= PASS_THRESHOLD
@@ -125,14 +125,14 @@ def load_data(path: str | Path | None = None) -> pd.DataFrame:
             }
             mapped = normalized.map(mapping)
             if mapped.isna().any():
-                raise ValueError("target ustunida tanilmagan qiymatlar bor.")
+                raise ValueError("The target column contains unrecognised values.")
             df["target"] = mapped.astype(int)
         else:
             df["target"] = pd.to_numeric(target, errors="raise").astype(int)
 
     classes = set(df["target"].dropna().unique().tolist())
     if not classes.issubset({0, 1}) or len(classes) != 2:
-        raise ValueError("target ikkilik klass bo'lishi kerak: 0 va 1.")
+        raise ValueError("The target must contain exactly two classes coded as 0 and 1.")
 
     return df.reset_index(drop=True)
 
@@ -154,7 +154,7 @@ def prepare_features(
     y = df["target"].to_numpy(dtype=int)
 
     if X.empty:
-        raise ValueError("Feature ustunlari qolmadi.")
+        raise ValueError("No feature columns remain after target and grade exclusions.")
     return X, y
 
 
@@ -523,4 +523,4 @@ def build_optuna_estimator(model_name: str, params: dict[str, Any]) -> Any:
             min_samples_leaf=int(params["min_samples_leaf"]),
             random_state=RANDOM_STATE,
         )
-    raise ValueError(f"Noma'lum model: {model_name}")
+    raise ValueError(f"Unknown model: {model_name}")
