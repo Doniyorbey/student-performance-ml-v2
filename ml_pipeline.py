@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -14,7 +15,11 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
+    balanced_accuracy_score,
+    confusion_matrix,
     f1_score,
+    matthews_corrcoef,
     precision_score,
     recall_score,
     roc_auc_score,
@@ -28,6 +33,8 @@ from sklearn.tree import DecisionTreeClassifier
 
 RANDOM_STATE = 42
 PASS_THRESHOLD = 10
+PRIMARY_METRIC = "Macro-F1"
+PRIMARY_SCORING = "f1_macro"
 
 DATA_CANDIDATES = (
     "student-mat.csv",
@@ -72,7 +79,7 @@ def _find_dataset(explicit_path: str | Path | None = None) -> Path:
             return path
 
     student_csvs = sorted(
-        p for p in root.rglob("*.csv") if "student" in p.name.lower()
+        path for path in root.rglob("*.csv") if "student" in path.name.lower()
     )
     if student_csvs:
         return student_csvs[0]
@@ -84,7 +91,7 @@ def _find_dataset(explicit_path: str | Path | None = None) -> Path:
 
 
 def load_data(path: str | Path | None = None) -> pd.DataFrame:
-    """Load the student dataset and create binary target when needed."""
+    """Load the dataset and create binary target: 0=Fail/at-risk, 1=Pass."""
     dataset_path = _find_dataset(path)
     df = _read_csv_robust(dataset_path)
 
@@ -94,7 +101,9 @@ def load_data(path: str | Path | None = None) -> pd.DataFrame:
                 "Datasetda target ham, G3 ham yo'q. target ustunini qo'shing "
                 "yoki UCI student-mat.csv faylidan foydalaning."
             )
-        df["target"] = (pd.to_numeric(df["G3"], errors="raise") >= PASS_THRESHOLD).astype(int)
+        df["target"] = (
+            pd.to_numeric(df["G3"], errors="raise") >= PASS_THRESHOLD
+        ).astype(int)
     else:
         target = df["target"]
         if target.dtype == "object":
@@ -107,6 +116,9 @@ def load_data(path: str | Path | None = None) -> pd.DataFrame:
                 "1": 1,
                 "fail": 0,
                 "failed": 0,
+                "risk": 0,
+                "at risk": 0,
+                "at-risk": 0,
                 "no": 0,
                 "false": 0,
                 "0": 0,
@@ -131,13 +143,13 @@ def prepare_features(
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Build X/y. G3 is always excluded because it defines the target.
-    By default G1 and G2 are excluded for an early-warning model.
+    G1 and G2 are excluded by default to create a genuine early-warning model.
     """
     drop_cols = ["target", "G3"]
     if not include_prior_grades:
         drop_cols.extend(["G1", "G2"])
 
-    existing = [col for col in drop_cols if col in df.columns]
+    existing = [column for column in drop_cols if column in df.columns]
     X = df.drop(columns=existing).copy()
     y = df["target"].to_numpy(dtype=int)
 
@@ -147,8 +159,10 @@ def prepare_features(
 
 
 def split_columns(X: pd.DataFrame) -> tuple[list[str], list[str]]:
-    cat_cols = X.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
-    num_cols = [col for col in X.columns if col not in cat_cols]
+    cat_cols = X.select_dtypes(
+        include=["object", "category", "bool"]
+    ).columns.tolist()
+    num_cols = [column for column in X.columns if column not in cat_cols]
     return cat_cols, num_cols
 
 
@@ -183,7 +197,7 @@ def get_preprocessor(
 
 
 def get_models() -> OrderedDict[str, tuple[Any, dict[str, list[Any]]]]:
-    """Six classifiers plus a dummy baseline with compact grids for Streamlit Cloud."""
+    """Six classifiers plus a baseline; compact enough for Streamlit Cloud."""
     return OrderedDict(
         {
             "Dummy Baseline": (
@@ -195,12 +209,12 @@ def get_models() -> OrderedDict[str, tuple[Any, dict[str, list[Any]]]]:
                     max_iter=3000,
                     class_weight="balanced",
                     solver="liblinear",
-                    penalty="l2",
+                    l1_ratio=0.0,
                     random_state=RANDOM_STATE,
                 ),
                 {
                     "clf__C": [0.01, 0.1, 1.0, 10.0],
-                    "clf__penalty": ["l1", "l2"],
+                    "clf__l1_ratio": [0.0, 1.0],
                 },
             ),
             "Decision Tree": (
@@ -257,6 +271,7 @@ def get_models() -> OrderedDict[str, tuple[Any, dict[str, list[Any]]]]:
 
 
 def _positive_probability(estimator: Any, X: pd.DataFrame) -> np.ndarray:
+    """Return P(Pass=1)."""
     if hasattr(estimator, "predict_proba"):
         return estimator.predict_proba(X)[:, 1]
     scores = estimator.decision_function(X)
@@ -275,6 +290,49 @@ def _clean_params(params: dict[str, Any]) -> dict[str, Any]:
     return {key.removeprefix("clf__"): value for key, value in params.items()}
 
 
+def _classification_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    y_prob_pass: np.ndarray,
+) -> dict[str, float]:
+    """
+    Return both conventional pass-class metrics and risk-focused metrics.
+
+    target: 0=Fail/at-risk, 1=Pass.
+    Risk Recall is the proportion of actual at-risk students detected as at-risk.
+    """
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel()
+    risk_recall = tn / (tn + fp) if (tn + fp) else 0.0
+    missed_risk_rate = fp / (tn + fp) if (tn + fp) else 0.0
+    false_alarm_rate = fn / (fn + tp) if (fn + tp) else 0.0
+    y_risk = 1 - np.asarray(y_true)
+    prob_risk = 1.0 - np.asarray(y_prob_pass)
+
+    return {
+        "Accuracy": float(accuracy_score(y_true, y_pred)),
+        "Balanced Accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "Macro-F1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+        "F1-Pass": float(f1_score(y_true, y_pred, pos_label=1, zero_division=0)),
+        "F1-Risk": float(f1_score(y_true, y_pred, pos_label=0, zero_division=0)),
+        "Precision-Pass": float(
+            precision_score(y_true, y_pred, pos_label=1, zero_division=0)
+        ),
+        "Recall-Pass": float(
+            recall_score(y_true, y_pred, pos_label=1, zero_division=0)
+        ),
+        "Precision-Risk": float(
+            precision_score(y_true, y_pred, pos_label=0, zero_division=0)
+        ),
+        "Risk Recall": float(risk_recall),
+        "Missed Risk Rate": float(missed_risk_rate),
+        "False Alarm Rate": float(false_alarm_rate),
+        "AUC-ROC": float(roc_auc_score(y_true, y_prob_pass)),
+        "PR-AUC-Risk": float(average_precision_score(y_risk, prob_risk)),
+        "MCC": float(matthews_corrcoef(y_true, y_pred)),
+    }
+
+
 def train_models(
     X: pd.DataFrame,
     y: np.ndarray,
@@ -283,7 +341,7 @@ def train_models(
     inner_splits: int = 5,
     progress_callback: Callable[[str, int, int, int, int], None] | None = None,
 ) -> dict[str, Any]:
-    """Run true nested CV and fit one final tuned pipeline per model."""
+    """Run nested CV, store out-of-fold predictions, and fit final tuned pipelines."""
     models = get_models()
     outer_cv = StratifiedKFold(
         n_splits=outer_splits,
@@ -292,23 +350,21 @@ def train_models(
     )
 
     results: dict[str, Any] = {}
-    f1_arrays: dict[str, np.ndarray] = {}
+    score_arrays: dict[str, np.ndarray] = {}
     fold_metrics: list[dict[str, Any]] = []
     best_pipes: dict[str, Pipeline] = {}
     oof: dict[str, dict[str, np.ndarray]] = {}
 
-    for model_index, (name, (estimator, param_grid)) in enumerate(models.items(), start=1):
-        metric_values = {
-            "Accuracy": [],
-            "Precision": [],
-            "Recall": [],
-            "F1": [],
-            "AUC-ROC": [],
-        }
+    for model_index, (name, (estimator, param_grid)) in enumerate(
+        models.items(), start=1
+    ):
+        metric_values: dict[str, list[float]] = {}
         oof_pred = np.zeros(len(y), dtype=int)
         oof_prob = np.zeros(len(y), dtype=float)
 
-        for fold_index, (train_idx, test_idx) in enumerate(outer_cv.split(X, y), start=1):
+        for fold_index, (train_idx, test_idx) in enumerate(
+            outer_cv.split(X, y), start=1
+        ):
             if progress_callback is not None:
                 progress_callback(
                     name,
@@ -335,7 +391,7 @@ def train_models(
             search = GridSearchCV(
                 estimator=pipe,
                 param_grid=param_grid,
-                scoring="f1",
+                scoring=PRIMARY_SCORING,
                 cv=inner_cv,
                 n_jobs=1,
                 refit=True,
@@ -351,15 +407,13 @@ def train_models(
             fold_result = {
                 "Model": name,
                 "Fold": fold_index,
-                "Accuracy": accuracy_score(y_test, y_pred),
-                "Precision": precision_score(y_test, y_pred, zero_division=0),
-                "Recall": recall_score(y_test, y_pred, zero_division=0),
-                "F1": f1_score(y_test, y_pred, zero_division=0),
-                "AUC-ROC": roc_auc_score(y_test, y_prob),
+                **_classification_metrics(y_test, y_pred, y_prob),
             }
             fold_metrics.append(fold_result)
-            for metric in metric_values:
-                metric_values[metric].append(float(fold_result[metric]))
+            for metric_name, metric_value in fold_result.items():
+                if metric_name in {"Model", "Fold"}:
+                    continue
+                metric_values.setdefault(metric_name, []).append(float(metric_value))
 
         final_cv = StratifiedKFold(
             n_splits=inner_splits,
@@ -375,7 +429,7 @@ def train_models(
         final_search = GridSearchCV(
             estimator=final_pipe,
             param_grid=param_grid,
-            scoring="f1",
+            scoring=PRIMARY_SCORING,
             cv=final_cv,
             n_jobs=1,
             refit=True,
@@ -384,11 +438,12 @@ def train_models(
         final_search.fit(X, y)
 
         results[name] = {
-            metric: _summary(values)
-            for metric, values in metric_values.items()
+            metric: _summary(values) for metric, values in metric_values.items()
         }
         results[name]["best_params"] = _clean_params(final_search.best_params_)
-        f1_arrays[name] = np.asarray(metric_values["F1"], dtype=float)
+        score_arrays[name] = np.asarray(
+            metric_values[PRIMARY_METRIC], dtype=float
+        )
         best_pipes[name] = final_search.best_estimator_
         oof[name] = {
             "y_true": y.copy(),
@@ -396,17 +451,24 @@ def train_models(
             "y_prob": oof_prob,
         }
 
-    best_model_name = max(results, key=lambda model: results[model]["F1"]["mean"])
+    best_model_name = max(
+        results,
+        key=lambda model_name: results[model_name][PRIMARY_METRIC]["mean"],
+    )
 
     return {
         "results": results,
-        "f1_arrays": f1_arrays,
+        "score_arrays": score_arrays,
+        # Backwards-compatible alias used by older app sections.
+        "f1_arrays": score_arrays,
         "fold_metrics": pd.DataFrame(fold_metrics),
         "best_pipes": best_pipes,
         "oof": oof,
         "best_model_name": best_model_name,
+        "primary_metric": PRIMARY_METRIC,
         "outer_splits": outer_splits,
         "inner_splits": inner_splits,
+        "trained_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
 
@@ -415,12 +477,13 @@ def fit_default_model(
     y: np.ndarray,
     preprocessor: ColumnTransformer,
 ) -> Pipeline:
-    """Fast fallback model used before the full nested-CV training is run."""
+    """Fast fallback model used before nested-CV training is run."""
     model = LogisticRegression(
         C=1.0,
         max_iter=3000,
         class_weight="balanced",
         solver="liblinear",
+        l1_ratio=0.0,
         random_state=RANDOM_STATE,
     )
     pipe = Pipeline(
@@ -437,7 +500,7 @@ def build_optuna_estimator(model_name: str, params: dict[str, Any]) -> Any:
     if model_name == "Logistic Regression":
         return LogisticRegression(
             C=float(params["C"]),
-            penalty=str(params["penalty"]),
+            l1_ratio=float(params["l1_ratio"]),
             solver="liblinear",
             max_iter=3000,
             class_weight="balanced",
