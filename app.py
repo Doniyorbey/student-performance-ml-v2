@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 import seaborn as sns
 import streamlit as st
 import sklearn
-from scipy.stats import wilcoxon
+from scipy.stats import friedmanchisquare, wilcoxon
 from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.calibration import calibration_curve
@@ -39,7 +39,7 @@ from sklearn.metrics import (
     recall_score,
     roc_curve,
 )
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score, learning_curve
 from sklearn.pipeline import Pipeline
 
 from ml_pipeline import (
@@ -372,17 +372,138 @@ def performance_statement(bundle: dict) -> tuple[str, str]:
     if best_score >= 0.75 and risk_recall >= 0.70 and uplift >= 0.10:
         return (
             "Strong prototype evidence",
-            f"{best} baseline'dan {uplift:.3f} Macro-F1 yuqori va risk recall {risk_recall:.3f}. Tashqi validatsiyasiz production da'vosi qilinmaydi.",
+            f"{best} improves Macro-F1 over the baseline by {uplift:.3f} and achieves risk recall of {risk_recall:.3f}. Production readiness is not claimed without external validation.",
         )
     if best_score >= 0.60 and uplift >= 0.05:
         return (
             "Moderate predictive evidence",
-            f"{best} baseline'dan {uplift:.3f} Macro-F1 yuqori. Natija akademik prototip uchun foydali, lekin real universitet qarorlari uchun yetarli emas.",
+            f"{best} improves Macro-F1 over the baseline by {uplift:.3f}. The result is useful for an academic prototype but is insufficient for operational university decisions.",
         )
     return (
         "Limited predictive evidence",
-        f"Baseline ustidagi Macro-F1 yutug'i {uplift:.3f}. Modelni kuchli deb taqdim etish emas, cheklovlarini tanqidiy baholash to'g'ri yondashuv.",
+        f"The Macro-F1 uplift over the baseline is {uplift:.3f}. The defensible conclusion is to report the model's limitations rather than present it as a strong predictor.",
     )
+
+
+def holm_adjusted_pvalues(p_values: list[float]) -> np.ndarray:
+    """Return Holm-Bonferroni adjusted p-values while preserving input order."""
+    raw = np.asarray(p_values, dtype=float)
+    if raw.size == 0:
+        return raw
+    order = np.argsort(raw)
+    adjusted = np.empty_like(raw)
+    running_max = 0.0
+    total = len(raw)
+    for rank, original_index in enumerate(order):
+        candidate = min((total - rank) * raw[original_index], 1.0)
+        running_max = max(running_max, candidate)
+        adjusted[original_index] = running_max
+    return adjusted
+
+
+def pairwise_wilcoxon_results(bundle: dict) -> pd.DataFrame:
+    """Compare all model pairs on matched outer-fold Macro-F1 scores."""
+    from itertools import combinations
+
+    rows = []
+    names = list(bundle["score_arrays"].keys())
+    for model_a, model_b in combinations(names, 2):
+        scores_a = np.asarray(bundle["score_arrays"][model_a], dtype=float)
+        scores_b = np.asarray(bundle["score_arrays"][model_b], dtype=float)
+        difference = scores_a - scores_b
+        if np.allclose(difference, 0):
+            statistic, p_value = 0.0, 1.0
+        else:
+            try:
+                statistic, p_value = wilcoxon(scores_a, scores_b)
+            except ValueError:
+                statistic, p_value = np.nan, 1.0
+        rows.append(
+            {
+                "Model A": model_a,
+                "Model B": model_b,
+                "Mean difference": float(difference.mean()),
+                "Wilcoxon statistic": float(statistic) if np.isfinite(statistic) else np.nan,
+                "Raw p-value": float(p_value),
+            }
+        )
+    result = pd.DataFrame(rows)
+    if not result.empty:
+        result["Holm-adjusted p-value"] = holm_adjusted_pvalues(
+            result["Raw p-value"].tolist()
+        )
+        result["Significant at 0.05"] = result["Holm-adjusted p-value"] < 0.05
+    return result
+
+
+def threshold_cost_analysis(
+    y_true,
+    y_prob_pass,
+    missed_risk_cost: float,
+    false_alarm_cost: float,
+) -> pd.DataFrame:
+    """Evaluate operational error cost across pass-probability thresholds."""
+    y_true = np.asarray(y_true, dtype=int)
+    y_prob_pass = np.asarray(y_prob_pass, dtype=float)
+    rows = []
+    for threshold in np.linspace(0.05, 0.95, 19):
+        y_pred = (y_prob_pass >= threshold).astype(int)
+        missed_risk = int(((y_true == 0) & (y_pred == 1)).sum())
+        false_alarm = int(((y_true == 1) & (y_pred == 0)).sum())
+        total_cost = missed_risk * missed_risk_cost + false_alarm * false_alarm_cost
+        metrics = oof_metrics(y_true, y_prob_pass, float(threshold))
+        rows.append(
+            {
+                "Pass threshold": float(threshold),
+                "Missed-risk cases": missed_risk,
+                "False alarms": false_alarm,
+                "Weighted cost": float(total_cost),
+                "Cost per student": float(total_cost / len(y_true)),
+                "Macro-F1": metrics["Macro-F1"],
+                "Risk Recall": metrics["Risk Recall"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def build_executive_summary(bundle: dict, frame: pd.DataFrame, features: pd.DataFrame) -> str:
+    best_name = bundle["best_model_name"]
+    baseline = "Dummy Baseline"
+    best_macro = metric_mean(bundle, best_name, "Macro-F1")
+    baseline_macro = metric_mean(bundle, baseline, "Macro-F1")
+    risk_recall = metric_mean(bundle, best_name, "Risk Recall")
+    auc_score = metric_mean(bundle, best_name, "AUC-ROC")
+    title, statement = performance_statement(bundle)
+    return f"""# Executive Summary — Explainable Student Risk Analytics
+
+## Project purpose
+This Pearson BTEC Level 6 applied-AI prototype evaluates whether machine-learning models can identify students at risk of failing using the UCI Student Performance dataset. The system is designed for research and human-reviewed support, not automated academic decisions.
+
+## Dataset and experimental design
+- Records: {len(frame)}
+- Model inputs: {features.shape[1]}
+- Target: 0 = Fail/at risk, 1 = Pass
+- Prior and final grades excluded: G1, G2 and G3
+- Validation: {bundle['outer_splits']} outer folds × {bundle['inner_splits']} inner folds
+- Primary selection metric: {bundle.get('primary_metric', PRIMARY_METRIC)}
+- Dataset fingerprint: {dataset_fingerprint(frame)}
+
+## Main result
+- Selected model: {best_name}
+- Macro-F1: {best_macro:.3f}
+- Dummy-baseline Macro-F1: {baseline_macro:.3f}
+- Uplift over baseline: {best_macro - baseline_macro:.3f}
+- Risk recall: {risk_recall:.3f}
+- ROC-AUC: {auc_score:.3f}
+
+**Interpretation:** {title}. {statement}
+
+## Evidence produced
+The application provides nested cross-validation, baseline comparison, risk-focused error analysis, calibration, bootstrap confidence intervals, subgroup diagnostics, SHAP explanations, threshold-cost analysis and an auditable evidence pack.
+
+## Critical limitation
+The dataset is historical and does not contain PDP University students. External deployment is not justified without local validation, governance review and ongoing performance monitoring.
+"""
 
 
 def build_evidence_pack(bundle: dict, frame: pd.DataFrame, features: pd.DataFrame) -> bytes:
@@ -457,6 +578,14 @@ UCI Student Performance dataset; not PDP University student data. Target: 0=Fail
 Small historical dataset, no causal inference, no external validation, subgroup estimates may be unstable, and model performance may not generalise to other institutions.
 """,
         )
+        archive.writestr(
+            "executive_summary.md",
+            build_executive_summary(bundle, frame, features),
+        )
+        archive.writestr(
+            "pairwise_wilcoxon_holm.csv",
+            pairwise_wilcoxon_results(bundle).to_csv(index=False),
+        )
         archive.writestr("best_model.joblib", model_to_bytes(bundle["best_pipes"][best_name]))
     buffer.seek(0)
     return buffer.getvalue()
@@ -526,10 +655,10 @@ def normalize_shap_explanation(explanation, feature_names):
 try:
     df = get_data()
 except Exception as exc:
-    st.error(f"Dataset yuklanmadi: {exc}")
+    st.error(f"Dataset could not be loaded: {exc}")
     st.code(
-        "Repository ichiga student-mat.csv faylini yoki "
-        "data/student-mat.csv faylini joylashtiring."
+        "Place student-mat.csv in the repository root or "
+        "use data/student-mat.csv."
     )
     st.stop()
 
@@ -545,17 +674,17 @@ with st.sidebar:
     st.markdown("**Eltezorov Doriyorbek · Group 22-305**")
     st.divider()
     page = st.radio(
-        "📌 Bo'limlar",
+        "📌 Navigation",
         [
-            "🏠 Bosh sahifa",
-            "📊 EDA & Tahlil",
+            "🏠 Overview",
+            "📊 EDA & Data Audit",
             "⚡ Optuna Optimization",
-            "🤖 Model O'qitish",
-            "📈 Natijalar",
+            "🤖 Model Training",
+            "📈 Results",
             "⚖️ Fairness Analysis",
             "🧪 Validity & Error Analysis",
             "🔬 SHAP Values",
-            "🔍 Bashorat",
+            "🔍 Prediction",
             "ℹ️ Model Card",
             "📚 Research Evidence",
         ],
@@ -570,9 +699,9 @@ with st.sidebar:
 bundle = st.session_state.get("training_bundle")
 
 # ════════════════════════════════════════
-# 🏠 BOSH SAHIFA
+# 🏠 OVERVIEW
 # ════════════════════════════════════════
-if page == "🏠 Bosh sahifa":
+if page == "🏠 Overview":
     best_name = bundle["best_model_name"] if bundle else "Not trained"
     best_macro = metric_mean(bundle, best_name, "Macro-F1") if bundle else None
     best_risk_recall = metric_mean(bundle, best_name, "Risk Recall") if bundle else None
@@ -674,7 +803,7 @@ if page == "🏠 Bosh sahifa":
 
 # 📊 EDA
 # ════════════════════════════════════════
-elif page == "📊 EDA & Tahlil":
+elif page == "📊 EDA & Data Audit":
     render_page_header(
         "DATA UNDERSTANDING",
         "Exploratory Data Analysis",
@@ -777,7 +906,7 @@ elif page == "📊 EDA & Tahlil":
             ]
             if col in df.columns
         ]
-        feature = st.selectbox("Feature tanlang", available)
+        feature = st.selectbox("Select a feature", available)
         y_axis = "G3" if "G3" in df.columns else "target"
         plot_df = df.copy()
         plot_df["Class"] = plot_df["target"].map({0: "Fail", 1: "Pass"})
@@ -841,17 +970,17 @@ elif page == "⚡ Optuna Optimization":
     st.title("⚡ Optuna Hyperparameter Optimization")
     st.divider()
     st.info(
-        "Preprocessing har bir CV fold ichida bajariladi. Bu validation ma'lumotining "
-        "oldindan ko'rilib qolishini oldini oladi."
+        "Preprocessing is fitted independently inside each cross-validation fold, "
+        "preventing validation data from leaking into training."
     )
 
     model_choice = st.selectbox(
-        "Model tanlang",
+        "Select a model",
         ["Logistic Regression", "Random Forest", "Gradient Boosting"],
     )
-    n_trials = st.slider("Trials soni", 10, 100, 30, 5)
+    n_trials = st.slider("Number of trials", 10, 100, 30, 5)
 
-    if st.button("🚀 Optuna Ishga Tushir", type="primary", width="stretch"):
+    if st.button("🚀 Run Optuna optimisation", type="primary", width="stretch"):
         import optuna
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -911,7 +1040,7 @@ elif page == "⚡ Optuna Optimization":
         try:
             study.optimize(objective, n_trials=n_trials, callbacks=[callback], n_jobs=1)
         except Exception as exc:
-            st.error(f"Optuna jarayonida xato: {exc}")
+            st.error(f"Optuna optimisation failed: {exc}")
         else:
             best_estimator = build_optuna_estimator(model_choice, study.best_params)
             best_pipe = Pipeline(
@@ -926,9 +1055,9 @@ elif page == "⚡ Optuna Optimization":
 
             progress.progress(1.0)
             status.empty()
-            st.success("Optuna tugadi.")
+            st.success("Optuna optimisation completed.")
             c1, c2 = st.columns(2)
-            c1.metric("🏆 Eng yaxshi CV Macro-F1", f"{study.best_value:.4f}")
+            c1.metric("🏆 Best CV Macro-F1", f"{study.best_value:.4f}")
             c2.metric("Trials", len(study.trials))
             st.json(study.best_params)
 
@@ -971,12 +1100,12 @@ elif page == "⚡ Optuna Optimization":
                 )
                 st.plotly_chart(fig, width="stretch")
             except Exception:
-                st.caption("Parameter importance hisoblash uchun trials yetarli emas.")
+                st.caption("There are not enough completed trials to estimate parameter importance reliably.")
 
 # ════════════════════════════════════════
-# 🤖 MODEL O'QITISH
+# 🤖 MODEL TRAINING
 # ════════════════════════════════════════
-elif page == "🤖 Model O'qitish":
+elif page == "🤖 Model Training":
     render_page_header(
         "MODEL DEVELOPMENT",
         "Nested Cross-Validation Experiment",
@@ -1098,9 +1227,9 @@ elif page == "🤖 Model O'qitish":
                 width="stretch",
             )
 
-# 📈 NATIJALAR
+# 📈 RESULTS
 # ════════════════════════════════════════
-elif page == "📈 Natijalar":
+elif page == "📈 Results":
     render_page_header(
         "EVIDENCE AND FINDINGS",
         "Model Evaluation Dashboard",
@@ -1336,6 +1465,60 @@ elif page == "📈 Natijalar":
             unsafe_allow_html=True,
         )
 
+        st.markdown("#### Cost-sensitive threshold analysis")
+        st.caption(
+            "This analysis makes the operational trade-off explicit. Assigning a larger cost to missed-risk cases recommends a threshold that prioritises early intervention."
+        )
+        cost_left, cost_right = st.columns(2)
+        missed_cost = cost_left.slider(
+            "Relative cost of one missed-risk case",
+            1.0,
+            20.0,
+            5.0,
+            1.0,
+            key="missed_risk_cost",
+        )
+        false_alarm_cost = cost_right.slider(
+            "Relative cost of one false alarm",
+            1.0,
+            20.0,
+            1.0,
+            1.0,
+            key="false_alarm_cost",
+        )
+        cost_df = threshold_cost_analysis(
+            pred_data["y_true"],
+            pred_data["y_prob"],
+            missed_cost,
+            false_alarm_cost,
+        )
+        recommended = cost_df.loc[cost_df["Weighted cost"].idxmin()]
+        cost_fig = px.line(
+            cost_df,
+            x="Pass threshold",
+            y="Cost per student",
+            markers=True,
+            title="Weighted operational cost across thresholds",
+        )
+        cost_fig.add_vline(
+            x=float(recommended["Pass threshold"]),
+            line_dash="dash",
+            annotation_text=f"Recommended = {recommended['Pass threshold']:.2f}",
+        )
+        st.plotly_chart(cost_fig, width="stretch")
+        rc1, rc2, rc3, rc4 = st.columns(4)
+        rc1.metric("Recommended threshold", f"{recommended['Pass threshold']:.2f}")
+        rc2.metric("Risk recall", f"{recommended['Risk Recall']:.3f}")
+        rc3.metric("Missed-risk cases", int(recommended["Missed-risk cases"]))
+        rc4.metric("False alarms", int(recommended["False alarms"]))
+        st.download_button(
+            "📥 Download threshold-cost analysis",
+            data=cost_df.to_csv(index=False).encode("utf-8"),
+            file_name=f"threshold_cost_{selected.replace(' ', '_')}.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
     with tab5:
         selected = st.selectbox(
             "Calibration model",
@@ -1430,6 +1613,56 @@ elif page == "📈 Natijalar":
                 )
         except ValueError as exc:
             st.warning(f"Wilcoxon test could not be calculated: {exc}")
+
+        st.markdown("#### Omnibus and multiple-comparison analysis")
+        st.caption(
+            "The Friedman test assesses whether matched outer-fold scores differ across all models. Pairwise Wilcoxon tests are then adjusted with the Holm procedure to reduce false discoveries."
+        )
+        comparable_names = list(bundle["score_arrays"].keys())
+        comparable_arrays = [
+            np.asarray(bundle["score_arrays"][name], dtype=float)
+            for name in comparable_names
+        ]
+        try:
+            friedman_stat, friedman_p = friedmanchisquare(*comparable_arrays)
+            fc1, fc2 = st.columns(2)
+            fc1.metric("Friedman statistic", f"{friedman_stat:.4f}")
+            fc2.metric("Friedman p-value", f"{friedman_p:.4f}")
+            if friedman_p < 0.05:
+                st.success(
+                    "The omnibus test indicates that at least one model differs across the matched outer folds."
+                )
+            else:
+                st.info(
+                    "The omnibus test did not detect a difference. With only 3 or 5 outer folds, this result has low statistical power and must not be interpreted as proof that all models are equivalent."
+                )
+        except ValueError as exc:
+            st.warning(f"Friedman test could not be calculated: {exc}")
+
+        pairwise_df = pairwise_wilcoxon_results(bundle)
+        if not pairwise_df.empty:
+            display_pairwise = pairwise_df.copy()
+            for column in [
+                "Mean difference",
+                "Wilcoxon statistic",
+                "Raw p-value",
+                "Holm-adjusted p-value",
+            ]:
+                display_pairwise[column] = pd.to_numeric(
+                    display_pairwise[column], errors="coerce"
+                ).round(4)
+            st.dataframe(
+                arrow_safe_df(display_pairwise),
+                width="stretch",
+                hide_index=True,
+            )
+            st.download_button(
+                "📥 Download corrected pairwise tests",
+                data=pairwise_df.to_csv(index=False).encode("utf-8"),
+                file_name="pairwise_wilcoxon_holm.csv",
+                mime="text/csv",
+                width="stretch",
+            )
 
 # ⚖️ FAIRNESS ANALYSIS
 # ════════════════════════════════════════
@@ -1643,8 +1876,14 @@ elif page == "🧪 Validity & Error Analysis":
         default="Unknown",
     )
 
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["🚨 Critical errors", "📊 Error profiles", "📏 Confidence intervals", "✅ Validity assessment"]
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        [
+            "🚨 Critical errors",
+            "📊 Error profiles",
+            "📏 Confidence intervals",
+            "✅ Validity assessment",
+            "📚 Learning curve",
+        ]
     )
 
     with tab1:
@@ -1803,6 +2042,89 @@ elif page == "🧪 Validity & Error Analysis":
             unsafe_allow_html=True,
         )
 
+    with tab5:
+        st.markdown("#### Learning-curve diagnosis")
+        st.caption(
+            "A learning curve helps distinguish underfitting from data scarcity. This is an on-demand diagnostic and may take up to a minute on Streamlit Cloud."
+        )
+        if st.button(
+            "Calculate learning curve",
+            type="primary",
+            key="learning_curve_button",
+            width="stretch",
+        ):
+            with st.spinner("Estimating training and validation performance..."):
+                estimator = clone(bundle["best_pipes"][selected_model])
+                cv = StratifiedKFold(
+                    n_splits=3,
+                    shuffle=True,
+                    random_state=RANDOM_STATE,
+                )
+                sizes, train_scores, validation_scores = learning_curve(
+                    estimator,
+                    X,
+                    y,
+                    cv=cv,
+                    scoring="f1_macro",
+                    train_sizes=np.linspace(0.2, 1.0, 5),
+                    n_jobs=1,
+                    shuffle=True,
+                    random_state=RANDOM_STATE,
+                    error_score="raise",
+                )
+            learning_df = pd.DataFrame(
+                {
+                    "Training examples": sizes,
+                    "Training Macro-F1": train_scores.mean(axis=1),
+                    "Validation Macro-F1": validation_scores.mean(axis=1),
+                    "Validation standard deviation": validation_scores.std(axis=1, ddof=1),
+                }
+            )
+            long_df = learning_df.melt(
+                id_vars="Training examples",
+                value_vars=["Training Macro-F1", "Validation Macro-F1"],
+                var_name="Series",
+                value_name="Macro-F1",
+            )
+            curve = px.line(
+                long_df,
+                x="Training examples",
+                y="Macro-F1",
+                color="Series",
+                markers=True,
+                title=f"Learning curve — {selected_model}",
+            )
+            curve.update_yaxes(range=[0, 1.05])
+            st.plotly_chart(curve, width="stretch")
+            st.dataframe(
+                arrow_safe_df(learning_df.round(4)),
+                width="stretch",
+                hide_index=True,
+            )
+            final_gap = float(
+                learning_df.iloc[-1]["Training Macro-F1"]
+                - learning_df.iloc[-1]["Validation Macro-F1"]
+            )
+            if final_gap >= 0.15:
+                st.warning(
+                    f"The final train-validation gap is {final_gap:.3f}, which suggests overfitting or high variance. More data, stronger regularisation or a simpler model should be considered."
+                )
+            elif learning_df.iloc[-1]["Validation Macro-F1"] < 0.60:
+                st.info(
+                    "Training and validation performance are both limited, which suggests underfitting, weak predictors or an outcome that is difficult to predict without prior grades."
+                )
+            else:
+                st.success(
+                    "The final learning-curve gap is relatively controlled. External validation is still required before deployment."
+                )
+            st.download_button(
+                "📥 Download learning-curve data",
+                data=learning_df.to_csv(index=False).encode("utf-8"),
+                file_name=f"learning_curve_{selected_model.replace(' ', '_')}.csv",
+                mime="text/csv",
+                width="stretch",
+            )
+
 
 # 🔬 SHAP
 # ════════════════════════════════════════
@@ -1959,9 +2281,9 @@ elif page == "🔬 SHAP Values":
                 )
 
 
-# 🔍 BASHORAT
+# 🔍 PREDICTION
 # ════════════════════════════════════════
-elif page == "🔍 Bashorat":
+elif page == "🔍 Prediction":
     render_page_header(
         "DECISION SUPPORT",
         "Individual Student Risk Estimate",
@@ -2240,13 +2562,23 @@ elif page == "ℹ️ Model Card":
             f'<div class="callout"><b>{claim_title}</b><br>{claim_text}</div>',
             unsafe_allow_html=True,
         )
-        st.download_button(
-            "🗂️ Download auditable evidence pack",
-            data=build_evidence_pack(bundle, df, X),
-            file_name="btec_ml_evidence_pack.zip",
-            mime="application/zip",
-            width="stretch",
-        )
+        download_left, download_right = st.columns(2)
+        with download_left:
+            st.download_button(
+                "📄 Download executive summary",
+                data=build_executive_summary(bundle, df, X).encode("utf-8"),
+                file_name="executive_summary.md",
+                mime="text/markdown",
+                width="stretch",
+            )
+        with download_right:
+            st.download_button(
+                "🗂️ Download auditable evidence pack",
+                data=build_evidence_pack(bundle, df, X),
+                file_name="btec_ml_evidence_pack.zip",
+                mime="application/zip",
+                width="stretch",
+            )
     else:
         st.info("No completed experiment is available in this browser session.")
 
@@ -2291,8 +2623,8 @@ elif page == "📚 Research Evidence":
             {"Criterion": "P4", "Application evidence": "Deployed end-to-end pipeline, trained models, prediction interface and exported artefacts.", "Strength": "Strong", "Report still needed": "Explain deviations from the original plan."},
             {"Criterion": "P5", "Application evidence": "Secondary dataset processing, EDA, nested model training and generated findings.", "Strength": "Strong", "Report still needed": "Document collection source, preprocessing and sampling limitations."},
             {"Criterion": "M3", "Application evidence": "Methods aligned to objectives: Macro-F1 tuning, risk metrics, calibration, fairness and SHAP.", "Strength": "Strong", "Report still needed": "Cite and justify every analytical choice."},
-            {"Criterion": "M4", "Application evidence": "Leaderboard, fold trends, ROC/PR, confusion matrix, threshold analysis and subgroup visualisation.", "Strength": "Strong", "Report still needed": "Write reasoned cross-comparisons and conclusions."},
-            {"Criterion": "D3", "Application evidence": "Nested CV, confidence intervals, calibration, error analysis, external-validity warning and reliability metadata.", "Strength": "Strong technical evidence", "Report still needed": "Critically evaluate validity, reliability and implications."},
+            {"Criterion": "M4", "Application evidence": "Leaderboard, fold trends, ROC/PR, confusion matrix, cost-sensitive threshold analysis and subgroup visualisation.", "Strength": "Strong", "Report still needed": "Write reasoned cross-comparisons and conclusions."},
+            {"Criterion": "D3", "Application evidence": "Nested CV, confidence intervals, calibration, corrected statistical comparisons, learning curves, error analysis and external-validity warnings.", "Strength": "Strong technical evidence", "Report still needed": "Critically evaluate validity, reliability and implications."},
             {"Criterion": "P6/M5", "Application evidence": "Professional interactive dashboard, downloadable evidence pack and responsible-use communication.", "Strength": "Strong", "Report still needed": "Structured report, Harvard citations and audience-tailored viva."},
             {"Criterion": "D1/D2/D4", "Application evidence": "Only limited support through alternative-metric rationale and limitations.", "Strength": "Insufficient alone", "Report still needed": "Alternative research directions, project-management critique and reflective development."},
         ]
@@ -2326,3 +2658,30 @@ elif page == "📚 Research Evidence":
         ]
     )
     st.dataframe(arrow_safe_df(checklist), width="stretch", hide_index=True)
+
+    st.markdown("### Academic foundations used by the application")
+    references = pd.DataFrame(
+        [
+            {
+                "Method": "Dataset and prediction problem",
+                "Harvard-style source": "Cortez, P. and Silva, A.M.G. (2008) Using data mining to predict secondary school student performance.",
+            },
+            {
+                "Method": "Nested model selection",
+                "Harvard-style source": "Varma, S. and Simon, R. (2006) 'Bias in error estimation when using cross-validation for model selection', BMC Bioinformatics, 7, 91.",
+            },
+            {
+                "Method": "Machine-learning implementation",
+                "Harvard-style source": "Pedregosa, F. et al. (2011) 'Scikit-learn: Machine Learning in Python', Journal of Machine Learning Research, 12, pp. 2825–2830.",
+            },
+            {
+                "Method": "Explainable AI",
+                "Harvard-style source": "Lundberg, S.M. and Lee, S.-I. (2017) 'A Unified Approach to Interpreting Model Predictions', Advances in Neural Information Processing Systems, 30.",
+            },
+            {
+                "Method": "Model governance",
+                "Harvard-style source": "Mitchell, M. et al. (2019) 'Model Cards for Model Reporting', Proceedings of the Conference on Fairness, Accountability, and Transparency.",
+            },
+        ]
+    )
+    st.dataframe(arrow_safe_df(references), width="stretch", hide_index=True)
