@@ -106,6 +106,33 @@ def format_result_table(bundle: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def arrow_safe_df(data) -> pd.DataFrame:
+    """Return a Streamlit/PyArrow-safe DataFrame without mixed object columns."""
+    if hasattr(data, "data") and isinstance(getattr(data, "data"), pd.DataFrame):
+        frame = data.data.copy()
+    else:
+        frame = pd.DataFrame(data).copy()
+
+    for column in frame.columns:
+        series = frame[column]
+        if isinstance(series.dtype, pd.CategoricalDtype):
+            frame[column] = series.astype(str)
+        elif series.dtype == "object":
+            def normalize(value):
+                if value is None:
+                    return ""
+                if isinstance(value, (dict, list, tuple, set, np.ndarray)):
+                    return str(value)
+                try:
+                    if pd.isna(value):
+                        return ""
+                except (TypeError, ValueError):
+                    pass
+                return str(value)
+            frame[column] = series.map(normalize)
+    return frame
+
+
 def model_to_bytes(model) -> bytes:
     buffer = BytesIO()
     joblib.dump(model, buffer)
@@ -222,7 +249,7 @@ if page == "🏠 Bosh sahifa":
         st.markdown("### 📊 Holat")
         if bundle:
             preview = format_result_table(bundle)[["Rank", "Model", "F1", "AUC-ROC"]]
-            st.dataframe(preview, width="stretch", hide_index=True)
+            st.dataframe(arrow_safe_df(preview), width="stretch", hide_index=True)
             st.success(f"Eng yaxshi model: {best_name}")
         else:
             st.info(
@@ -348,7 +375,7 @@ elif page == "📊 EDA & Tahlil":
         st.plotly_chart(fig, width="stretch")
 
     with tab4:
-        st.dataframe(df.head(50), width="stretch", hide_index=True)
+        st.dataframe(arrow_safe_df(df.head(50)), width="stretch", hide_index=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("Rows", df.shape[0])
         c2.metric("Columns", df.shape[1])
@@ -390,7 +417,7 @@ elif page == "⚡ Optuna Optimization":
             if model_choice == "Logistic Regression":
                 params = {
                     "C": trial.suggest_float("C", 1e-3, 100.0, log=True),
-                    "l1_ratio": trial.suggest_categorical("l1_ratio", [0.0, 1.0]),
+                    "penalty": trial.suggest_categorical("penalty", ["l1", "l2"]),
                 }
             elif model_choice == "Random Forest":
                 params = {
@@ -462,7 +489,7 @@ elif page == "⚡ Optuna Optimization":
             trials_df = study.trials_dataframe(
                 attrs=("number", "value", "params", "state")
             )
-            st.dataframe(trials_df, width="stretch", hide_index=True)
+            st.dataframe(arrow_safe_df(trials_df), width="stretch", hide_index=True)
 
             history = pd.DataFrame(
                 {
@@ -566,7 +593,11 @@ elif page == "🤖 Model O'qitish":
         c3.metric("Best AUC", f"{metric_mean(bundle, best_name, 'AUC-ROC'):.3f}")
 
         st.subheader("Fold-by-Fold F1")
-        fold_df = bundle["fold_metrics"]
+        fold_df = bundle["fold_metrics"].copy()
+        fold_df["Model"] = fold_df["Model"].astype(str)
+        fold_df["Fold"] = pd.to_numeric(fold_df["Fold"], errors="coerce").astype("Int64")
+        fold_df["F1"] = pd.to_numeric(fold_df["F1"], errors="coerce").astype(float)
+        fold_df = fold_df.dropna(subset=["Fold", "F1"])
         fig = px.line(
             fold_df,
             x="Fold",
@@ -613,7 +644,7 @@ elif page == "📈 Natijalar":
 
     with tab1:
         leaderboard = format_result_table(bundle)
-        st.dataframe(leaderboard, width="stretch", hide_index=True)
+        st.dataframe(arrow_safe_df(leaderboard), width="stretch", hide_index=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("🥇 Best Model", best_name)
         c2.metric(
@@ -856,7 +887,7 @@ elif page == "📈 Natijalar":
                 model_b: b_scores,
             }
         )
-        st.dataframe(comparison_df, width="stretch", hide_index=True)
+        st.dataframe(arrow_safe_df(comparison_df), width="stretch", hide_index=True)
 
         try:
             statistic, p_value = wilcoxon(a_scores, b_scores)
@@ -940,14 +971,13 @@ elif page == "⚖️ Fairness Analysis":
         st.error("Tanlangan minimal guruh hajmida yetarli subgroup topilmadi.")
         st.stop()
 
+    fairness_display = subgroup_results.copy()
+    metric_columns = [
+        "Accuracy", "Precision", "Recall", "F1", "False Negative Rate"
+    ]
+    fairness_display[metric_columns] = fairness_display[metric_columns].round(3)
     st.dataframe(
-        subgroup_results.style.format({
-            "Accuracy": "{:.3f}",
-            "Precision": "{:.3f}",
-            "Recall": "{:.3f}",
-            "F1": "{:.3f}",
-            "False Negative Rate": "{:.3f}",
-        }),
+        arrow_safe_df(fairness_display),
         width="stretch",
         hide_index=True,
     )
@@ -1074,7 +1104,7 @@ elif page == "🔬 SHAP Values":
             1,
         )
         st.dataframe(
-            shap_rows.iloc[[row_number - 1]],
+            arrow_safe_df(shap_rows.iloc[[row_number - 1]]),
             width="stretch",
             hide_index=True,
         )
@@ -1213,7 +1243,7 @@ elif page == "🔍 Bashorat":
             st.subheader("Kiritilgan ma'lumot")
             display_df = student_df.T.reset_index()
             display_df.columns = ["Feature", "Value"]
-            st.dataframe(display_df, width="stretch", hide_index=True, height=430)
+            st.dataframe(arrow_safe_df(display_df), width="stretch", hide_index=True, height=430)
 
             if prediction == 0:
                 st.warning(
