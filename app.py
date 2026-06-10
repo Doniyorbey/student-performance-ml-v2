@@ -16,10 +16,16 @@ import streamlit as st
 from scipy.stats import wilcoxon
 from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.calibration import calibration_curve
 from sklearn.metrics import (
+    accuracy_score,
     auc,
+    brier_score_loss,
     confusion_matrix,
+    f1_score,
     precision_recall_curve,
+    precision_score,
+    recall_score,
     roc_curve,
 )
 from sklearn.model_selection import StratifiedKFold, cross_val_score
@@ -159,6 +165,7 @@ with st.sidebar:
             "⚡ Optuna Optimization",
             "🤖 Model O'qitish",
             "📈 Natijalar",
+            "⚖️ Fairness Analysis",
             "🔬 SHAP Values",
             "🔍 Bashorat",
             "ℹ️ Model Card",
@@ -187,7 +194,7 @@ if page == "🏠 Bosh sahifa":
     cols = st.columns(5)
     cols[0].metric("👨‍🎓 O'quvchilar", len(df))
     cols[1].metric("📚 Features", X.shape[1])
-    cols[2].metric("🤖 Modellar", len(get_models()))
+    cols[2].metric("🤖 Modellar", f"{len(get_models()) - 1} + baseline")
     cols[3].metric("🏆 Best F1", f"{best_f1:.3f}" if best_f1 is not None else "—")
     cols[4].metric("📈 Best AUC", f"{best_auc:.3f}" if best_auc is not None else "—")
 
@@ -202,8 +209,8 @@ if page == "🏠 Bosh sahifa":
             yakuniy bahoni takrorlovchi kalkulyator emas, balki erta xavf aniqlash tizimidir.
 
             ### 🔧 Metodlar
-            - 6 ta klassifikatsiya modeli
-            - 5-fold outer + 5-fold inner Nested Cross-Validation
+            - 6 ta klassifikatsiya modeli + Dummy baseline
+            - Quick (3×3) yoki Full (5×5) Nested Cross-Validation
             - GridSearchCV va Optuna
             - OOF ROC, Precision–Recall va Confusion Matrix
             - Haqiqiy Wilcoxon testi
@@ -499,16 +506,29 @@ elif page == "⚡ Optuna Optimization":
 elif page == "🤖 Model O'qitish":
     st.title("🤖 Model O'qitish — Nested Cross-Validation")
     st.divider()
-    st.warning(
-        "6 model × 5 outer fold × 5 inner fold hisoblanadi. Streamlit Cloud'da "
-        "bir necha daqiqa vaqt olishi mumkin."
+
+    mode = st.radio(
+        "Hisoblash rejimi",
+        ["⚡ Quick — 3 outer × 3 inner", "🔬 Full — 5 outer × 5 inner"],
+        horizontal=True,
+        help="Quick rejim demo va tekshiruv uchun; Full rejim yakuniy ilmiy natija uchun.",
     )
+    if mode.startswith("⚡"):
+        outer_splits, inner_splits = 3, 3
+        st.info(
+            "Quick rejim: 6 model + baseline. Odatda tezroq tugaydi va appni tekshirish uchun yetarli."
+        )
+    else:
+        outer_splits, inner_splits = 5, 5
+        st.warning(
+            "Full rejim: 6 model + baseline × 5 outer fold × inner GridSearch. "
+            "Streamlit Cloud'da ancha vaqt olishi mumkin."
+        )
 
     if st.button("🚀 Modellarni O'qitish", type="primary", width="stretch"):
         progress = st.progress(0)
         status = st.empty()
         total_models = len(get_models())
-        outer_splits = 5
 
         def update_progress(name, model_idx, models_count, fold_idx, folds_count):
             completed = (model_idx - 1) * folds_count + (fold_idx - 1)
@@ -525,7 +545,7 @@ elif page == "🤖 Model O'qitish":
                 y,
                 preprocessor,
                 outer_splits=outer_splits,
-                inner_splits=5,
+                inner_splits=inner_splits,
                 progress_callback=update_progress,
             )
         except Exception as exc:
@@ -577,12 +597,13 @@ elif page == "📈 Natijalar":
         st.warning("Avval `🤖 Model O'qitish` bo'limida modellarni o'qiting.")
         st.stop()
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "🏆 Leaderboard",
             "📊 Metrics",
             "📉 ROC & PR",
             "🧩 Confusion Matrix",
+            "🎯 Calibration",
             "🧪 Wilcoxon",
         ]
     )
@@ -614,6 +635,40 @@ elif page == "📈 Natijalar":
             mime="text/csv",
             width="stretch",
         )
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.download_button(
+                "📄 Fold natijalari",
+                data=bundle["fold_metrics"].to_csv(index=False).encode("utf-8"),
+                file_name="fold_metrics.csv",
+                mime="text/csv",
+                width="stretch",
+            )
+        with c2:
+            best_params_json = pd.Series(
+                bundle["results"][best_name]["best_params"]
+            ).to_json(indent=2)
+            st.download_button(
+                "⚙️ Best params JSON",
+                data=best_params_json,
+                file_name="best_params.json",
+                mime="application/json",
+                width="stretch",
+            )
+        with c3:
+            oof_export = pd.DataFrame({
+                "y_true": bundle["oof"][best_name]["y_true"],
+                "y_pred": bundle["oof"][best_name]["y_pred"],
+                "y_prob": bundle["oof"][best_name]["y_prob"],
+            })
+            st.download_button(
+                "🧾 OOF predictions",
+                data=oof_export.to_csv(index=False).encode("utf-8"),
+                file_name="oof_predictions.csv",
+                mime="text/csv",
+                width="stretch",
+            )
 
     with tab2:
         metric = st.selectbox(
@@ -740,6 +795,53 @@ elif page == "📈 Natijalar":
         )
 
     with tab5:
+        selected = st.selectbox(
+            "Calibration modeli",
+            model_names,
+            index=model_names.index(best_name),
+            key="calibration_model",
+        )
+        pred_data = bundle["oof"][selected]
+        y_true = pred_data["y_true"]
+        y_prob = pred_data["y_prob"]
+        prob_true, prob_pred = calibration_curve(
+            y_true, y_prob, n_bins=8, strategy="quantile"
+        )
+        brier = brier_score_loss(y_true, y_prob)
+
+        calibration_fig = go.Figure()
+        calibration_fig.add_trace(
+            go.Scatter(
+                x=prob_pred,
+                y=prob_true,
+                mode="lines+markers",
+                name=selected,
+            )
+        )
+        calibration_fig.add_trace(
+            go.Scatter(
+                x=[0, 1],
+                y=[0, 1],
+                mode="lines",
+                name="Perfect calibration",
+                line={"dash": "dash"},
+            )
+        )
+        calibration_fig.update_layout(
+            title=f"Calibration Curve — {selected}",
+            xaxis_title="Predicted probability",
+            yaxis_title="Observed pass rate",
+            xaxis={"range": [0, 1]},
+            yaxis={"range": [0, 1]},
+        )
+        st.plotly_chart(calibration_fig, width="stretch")
+        st.metric("Brier score (pastroq yaxshiroq)", f"{brier:.4f}")
+        st.caption(
+            "Diagonal chiziqqa yaqinlik ehtimollar qanchalik ishonchli ekanini ko'rsatadi. "
+            "Bu grafik probability qiymatini haddan tashqari aniq talqin qilishdan saqlaydi."
+        )
+
+    with tab6:
         left, right = st.columns(2)
         model_a = left.selectbox("Model A", model_names, index=0)
         model_b_options = [name for name in model_names if name != model_a]
@@ -770,6 +872,120 @@ elif page == "📈 Natijalar":
                 )
         except ValueError as exc:
             st.warning(f"Wilcoxon hisoblanmadi: {exc}")
+
+# ════════════════════════════════════════
+# ⚖️ FAIRNESS ANALYSIS
+# ════════════════════════════════════════
+elif page == "⚖️ Fairness Analysis":
+    st.title("⚖️ Fairness va Subgroup Performance")
+    st.divider()
+    st.warning(
+        "Bu tahlil guruhlar orasidagi model performance farqlarini ko'rsatadi. "
+        "Kichik guruhlardagi natijalar ehtiyotkorlik bilan talqin qilinishi kerak."
+    )
+
+    if not bundle:
+        st.info("Avval `🤖 Model O'qitish` bo'limida Quick yoki Full treningni bajaring.")
+        st.stop()
+
+    fairness_model = st.selectbox(
+        "Model",
+        list(bundle["results"].keys()),
+        index=list(bundle["results"].keys()).index(bundle["best_model_name"]),
+    )
+    available_groups = [
+        col for col in ["sex", "school", "address", "Medu", "Fedu", "age"]
+        if col in X.columns
+    ]
+    group_feature = st.selectbox("Guruh feature", available_groups)
+    min_group_size = st.slider("Minimal guruh hajmi", 5, 30, 10)
+
+    fairness_df = X[[group_feature]].copy()
+    if group_feature == "age":
+        fairness_df["Group"] = pd.cut(
+            pd.to_numeric(fairness_df[group_feature], errors="coerce"),
+            bins=[14, 16, 18, 20, 30],
+            labels=["15–16", "17–18", "19–20", "21+"],
+            include_lowest=True,
+        ).astype(str)
+    else:
+        fairness_df["Group"] = fairness_df[group_feature].astype(str)
+
+    pred_data = bundle["oof"][fairness_model]
+    fairness_df["y_true"] = pred_data["y_true"]
+    fairness_df["y_prob"] = pred_data["y_prob"]
+    fairness_df["y_pred"] = (fairness_df["y_prob"] >= 0.5).astype(int)
+
+    rows = []
+    for group, part in fairness_df.groupby("Group", dropna=False):
+        if len(part) < min_group_size:
+            continue
+        y_true_group = part["y_true"].to_numpy()
+        y_pred_group = part["y_pred"].to_numpy()
+        cm = confusion_matrix(y_true_group, y_pred_group, labels=[0, 1])
+        tn, fp, fn, tp = cm.ravel()
+        fnr = fn / (fn + tp) if (fn + tp) else np.nan
+        rows.append({
+            "Group": group,
+            "N": len(part),
+            "Accuracy": accuracy_score(y_true_group, y_pred_group),
+            "Precision": precision_score(y_true_group, y_pred_group, zero_division=0),
+            "Recall": recall_score(y_true_group, y_pred_group, zero_division=0),
+            "F1": f1_score(y_true_group, y_pred_group, zero_division=0),
+            "False Negative Rate": fnr,
+        })
+
+    subgroup_results = pd.DataFrame(rows)
+    if subgroup_results.empty:
+        st.error("Tanlangan minimal guruh hajmida yetarli subgroup topilmadi.")
+        st.stop()
+
+    st.dataframe(
+        subgroup_results.style.format({
+            "Accuracy": "{:.3f}",
+            "Precision": "{:.3f}",
+            "Recall": "{:.3f}",
+            "F1": "{:.3f}",
+            "False Negative Rate": "{:.3f}",
+        }),
+        width="stretch",
+        hide_index=True,
+    )
+
+    metric_choice = st.selectbox(
+        "Grafik metric", ["Recall", "F1", "False Negative Rate", "Accuracy"]
+    )
+    fairness_fig = px.bar(
+        subgroup_results,
+        x="Group",
+        y=metric_choice,
+        text=subgroup_results[metric_choice].round(3),
+        title=f"{fairness_model}: {metric_choice} by {group_feature}",
+    )
+    fairness_fig.update_yaxes(range=[0, 1])
+    st.plotly_chart(fairness_fig, width="stretch")
+
+    spread = float(
+        subgroup_results[metric_choice].max() - subgroup_results[metric_choice].min()
+    )
+    if spread >= 0.15:
+        st.error(
+            f"Potential disparity: guruhlar orasidagi {metric_choice} farqi {spread:.3f}. "
+            "Buni bias deb yakuniy hukm qilishdan oldin sample hajmi va kontekst tekshirilishi kerak."
+        )
+    elif spread >= 0.08:
+        st.warning(f"O'rtacha subgroup farqi aniqlandi: {spread:.3f}.")
+    else:
+        st.success(f"Katta subgroup farqi aniqlanmadi: {spread:.3f}.")
+
+    st.download_button(
+        "📥 Fairness natijalarini CSV yuklab olish",
+        data=subgroup_results.to_csv(index=False).encode("utf-8"),
+        file_name=f"fairness_{group_feature}.csv",
+        mime="text/csv",
+        width="stretch",
+    )
+
 
 # ════════════════════════════════════════
 # 🔬 SHAP
@@ -878,6 +1094,10 @@ elif page == "🔬 SHAP Values":
 elif page == "🔍 Bashorat":
     st.title("🔍 O'quvchi Natijasini Bashorat Qilish")
     st.divider()
+    st.warning(
+        "Academic prototype: bu bashorat talaba haqida yakuniy qaror, jazo yoki "
+        "avtomatik rad etish uchun yagona asos bo'la olmaydi. Inson nazorati shart."
+    )
 
     if bundle:
         prediction_model_name = bundle["best_model_name"]
@@ -1015,14 +1235,16 @@ elif page == "ℹ️ Model Card":
         bo'lish ehtimolini baholash.
 
         ### Dataset
+        - Manba: **UCI Student Performance Dataset (Cortez and Silva, 2008)**
+        - Ushbu ma'lumotlar **PDP University talabalariga tegishli emas**
         - Qatorlar: **{len(df)}**
         - Model featurelari: **{X.shape[1]}**
         - Target: **0 = Fail, 1 = Pass**
         - Modeldan chiqarilgan ustunlar: **G1, G2, G3, target**
 
         ### Validatsiya
-        - Outer CV: **5-fold StratifiedKFold**
-        - Inner CV: **5-fold StratifiedKFold**
+        - Quick rejim: **3-fold outer + 3-fold inner**
+        - Full rejim: **5-fold outer + 5-fold inner**
         - Asosiy tanlash metrikasi: **F1**
         - Qo'shimcha metrikalar: Accuracy, Precision, Recall, AUC-ROC
 
