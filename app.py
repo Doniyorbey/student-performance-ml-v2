@@ -176,6 +176,149 @@ st.markdown(
             padding:1rem;
             overflow:auto;
         }
+        .journey {display:grid; grid-template-columns: repeat(5, 1fr); gap:.7rem; margin:1rem 0;}
+        .journey-step {background:#ffffff; border:1px solid #dbeafe; border-radius:16px; padding:1rem; box-shadow:0 8px 18px rgba(15,23,42,.045);}
+        .journey-step b {color:#0f172a;}
+        .journey-step span {display:block; color:#64748b; font-size:.84rem; margin-top:.35rem;}
+        .signature-strip {background:linear-gradient(90deg,#0f172a,#1d4ed8,#0f766e); border-radius:18px; padding:1rem 1.15rem; color:white; margin:.8rem 0 1.1rem;}
+        .signature-strip strong {color:#bae6fd;}
+        .status-green {background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:.55rem .75rem; border-radius:999px; font-weight:800; display:inline-block;}
+        .status-amber {background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:.55rem .75rem; border-radius:999px; font-weight:800; display:inline-block;}
+        .status-red {background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:.55rem .75rem; border-radius:999px; font-weight:800; display:inline-block;}
+
+        .top-status-bar {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background: rgba(248,250,252,.86);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(226,232,240,.85);
+            border-radius: 18px;
+            padding: .72rem .95rem;
+            margin: 0 0 1rem 0;
+            box-shadow: 0 8px 26px rgba(15,23,42,.06);
+        }
+        .top-status-grid {display:grid; grid-template-columns: 1.1fr repeat(4, .7fr); gap:.65rem; align-items:center;}
+        .status-chip {
+            border-radius: 999px;
+            padding: .44rem .62rem;
+            background: #ffffff;
+            border: 1px solid #dbeafe;
+            color: #1e293b;
+            font-size: .78rem;
+            font-weight: 800;
+            text-align:center;
+            white-space: nowrap;
+        }
+        .status-chip strong {color:#2563eb;}
+        .nav-card {
+            background: rgba(255,255,255,.72);
+            border: 1px solid #dbeafe;
+            border-radius: 18px;
+            padding: .75rem .7rem;
+            margin-bottom: .85rem;
+            box-shadow: 0 10px 28px rgba(15,23,42,.055);
+        }
+        .nav-title {
+            color:#0f172a;
+            font-weight: 900;
+            font-size:.82rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin: .35rem 0 .45rem;
+        }
+        .nav-active {
+            background: linear-gradient(90deg,#2563eb,#0f766e);
+            color:white;
+            border-radius:12px;
+            padding:.58rem .68rem;
+            font-weight:900;
+            margin:.25rem 0 .4rem;
+            box-shadow: 0 8px 20px rgba(37,99,235,.18);
+        }
+        .executive-card {
+            background: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+            border: 1px solid #dbeafe;
+            border-radius: 22px;
+            padding: 1.15rem;
+            box-shadow: 0 12px 30px rgba(15,23,42,.06);
+            height:100%;
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        .executive-card:hover {
+            transform: translateY(-3px);
+            border-color:#93c5fd;
+            box-shadow: 0 20px 42px rgba(15,23,42,.10);
+        }
+        .executive-card h4 {margin:.1rem 0 .35rem; color:#0f172a;}
+        .executive-card p {color:#475569; font-size:.92rem; margin:.35rem 0 0;}
+        .story-box {
+            background: radial-gradient(circle at 100% 10%, rgba(14,165,233,.16), transparent 28%), #ffffff;
+            border: 1px solid #dbeafe;
+            border-radius: 24px;
+            padding: 1.15rem 1.25rem;
+            box-shadow: 0 14px 36px rgba(15,23,42,.06);
+            margin: .8rem 0 1rem;
+        }
+        .story-box h3 {margin-top:0; color:#0f172a;}
+        .action-tile {
+            background:#ffffff;
+            border:1px solid #e2e8f0;
+            border-radius:18px;
+            padding:1rem;
+            height:100%;
+        }
+        .action-tile b {color:#0f172a;}
+        .action-tile span {display:block; color:#64748b; font-size:.88rem; margin-top:.25rem;}
+        .pulse-dot {
+            display:inline-block;
+            width:.62rem;
+            height:.62rem;
+            border-radius:999px;
+            background:#10b981;
+            box-shadow:0 0 0 0 rgba(16,185,129,.55);
+            animation:pulse 1.8s infinite;
+            margin-right:.4rem;
+        }
+        @keyframes pulse {
+            0% {box-shadow:0 0 0 0 rgba(16,185,129,.55);}
+            70% {box-shadow:0 0 0 9px rgba(16,185,129,0);}
+            100% {box-shadow:0 0 0 0 rgba(16,185,129,0);}
+        }
+        .scenario-card {
+            border-radius: 20px;
+            padding: 1rem 1.1rem;
+            background: #ffffff;
+            border: 1px solid #dbeafe;
+            box-shadow: 0 10px 24px rgba(15,23,42,.05);
+        }
+        .scenario-card .delta-good {color:#047857; font-weight:900;}
+        .scenario-card .delta-bad {color:#b91c1c; font-weight:900;}
+        .control-panel {
+            background: linear-gradient(135deg,#0f172a,#172554);
+            color:#e0f2fe;
+            border-radius: 24px;
+            padding: 1.15rem 1.25rem;
+            box-shadow: 0 18px 40px rgba(15,23,42,.18);
+        }
+        .control-panel h3 {color:white; margin-top:0;}
+        .control-panel p {color:#bfdbfe;}
+        .workflow-pill {
+            display:inline-flex;
+            align-items:center;
+            gap:.45rem;
+            border:1px solid #bfdbfe;
+            background:#eff6ff;
+            color:#1d4ed8;
+            padding:.48rem .72rem;
+            border-radius:999px;
+            font-weight:800;
+            font-size:.82rem;
+            margin:.2rem;
+        }
+        @media (max-width: 1000px) {.top-status-grid {grid-template-columns:1fr 1fr;}}
+
+        @media (max-width: 1000px) {.journey {grid-template-columns:1fr;}}
         @media (max-width: 900px) {
             .hero {padding:1.45rem; border-radius:18px;}
             .hero h1 {font-size:1.65rem;}
@@ -667,36 +810,89 @@ X, y = prepare_features(df, include_prior_grades=False)
 cat_cols, num_cols = split_columns(X)
 preprocessor = get_preprocessor(cat_cols, num_cols)
 
+PAGES = [
+    "🏠 Overview",
+    "📊 EDA & Data Audit",
+    "⚡ Optuna Optimization",
+    "🤖 Model Training",
+    "📈 Results",
+    "⚖️ Fairness Analysis",
+    "🧪 Validity & Error Analysis",
+    "🔬 SHAP Values",
+    "🔍 Prediction",
+    "🎛️ Intervention Simulator",
+    "🧭 Evidence Control Room",
+    "ℹ️ Model Card",
+    "📚 Research Evidence",
+]
+
+NAV_GROUPS = {
+    "Operate": ["🏠 Overview", "📊 EDA & Data Audit", "🤖 Model Training", "📈 Results"],
+    "Trust": ["⚖️ Fairness Analysis", "🧪 Validity & Error Analysis", "🔬 SHAP Values"],
+    "Use": ["🔍 Prediction", "🎛️ Intervention Simulator"],
+    "Evidence": ["🧭 Evidence Control Room", "ℹ️ Model Card", "📚 Research Evidence"],
+    "Optional": ["⚡ Optuna Optimization"],
+}
+
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "🏠 Overview"
+if st.session_state.active_page not in PAGES:
+    st.session_state.active_page = "🏠 Overview"
+
 with st.sidebar:
-    st.markdown("## 🎓 Student Risk Lab")
-    st.caption("Explainable ML early-warning prototype")
+    st.markdown("## 🧠 Academic Risk Command Center")
+    st.caption("Signature dashboard · responsible AI · BTEC evidence")
     st.markdown("**PDP University · BTEC Level 6 · 2026**")
     st.markdown("**Eltezorov Doriyorbek · Group 22-305**")
-    st.divider()
-    page = st.radio(
-        "📌 Navigation",
-        [
-            "🏠 Overview",
-            "📊 EDA & Data Audit",
-            "⚡ Optuna Optimization",
-            "🤖 Model Training",
-            "📈 Results",
-            "⚖️ Fairness Analysis",
-            "🧪 Validity & Error Analysis",
-            "🔬 SHAP Values",
-            "🔍 Prediction",
-            "ℹ️ Model Card",
-            "📚 Research Evidence",
-        ],
+    st.markdown(
+        f"""<div class="nav-card">
+            <div class="nav-title">Current module</div>
+            <div class="nav-active">{st.session_state.active_page}</div>
+            <span class="small-note">Use the command navigation below. Each click changes the working mode of the dashboard.</span>
+        </div>""",
+        unsafe_allow_html=True,
     )
+
+    for group_name, items in NAV_GROUPS.items():
+        st.markdown(f'<div class="nav-title">{group_name}</div>', unsafe_allow_html=True)
+        for item in items:
+            btn_type = "primary" if item == st.session_state.active_page else "secondary"
+            if st.button(item, key=f"nav_{item}", width="stretch", type=btn_type):
+                st.session_state.active_page = item
+                st.rerun()
+
     st.divider()
+    presentation_mode = st.toggle(
+        "Presentation mode",
+        value=st.session_state.get("presentation_mode", False),
+        help="Uses tighter executive wording and keeps examiner-facing panels visible.",
+    )
+    st.session_state.presentation_mode = presentation_mode
     st.caption(f"Dataset: {len(df)} rows · {X.shape[1]} model features")
     st.caption("Target: 0 = Fail/at-risk · 1 = Pass")
     st.caption("Primary metric: Macro-F1")
     st.caption("G1, G2 and G3 excluded")
     st.caption(f"Fingerprint: {dataset_fingerprint(df)}")
 
+page = st.session_state.active_page
 bundle = st.session_state.get("training_bundle")
+
+trained_state = "Ready" if bundle else "Not trained"
+best_state = bundle["best_model_name"] if bundle else "Run training"
+macro_state = f"{metric_mean(bundle, best_state, 'Macro-F1'):.3f}" if bundle else "—"
+risk_state = f"{metric_mean(bundle, best_state, 'Risk Recall'):.3f}" if bundle else "—"
+st.markdown(
+    f"""<div class="top-status-bar">
+        <div class="top-status-grid">
+            <div><span class="pulse-dot"></span><b>Academic Risk Command Center</b></div>
+            <div class="status-chip">Experiment: <strong>{trained_state}</strong></div>
+            <div class="status-chip">Best model: <strong>{best_state}</strong></div>
+            <div class="status-chip">Macro-F1: <strong>{macro_state}</strong></div>
+            <div class="status-chip">Risk recall: <strong>{risk_state}</strong></div>
+        </div>
+    </div>""",
+    unsafe_allow_html=True,
+)
 
 # ════════════════════════════════════════
 # 🏠 OVERVIEW
@@ -714,11 +910,11 @@ if page == "🏠 Overview":
         """
         <div class="hero">
             <span class="eyebrow">Pearson BTEC Level 6 · Applied AI Capstone</span>
-            <h1>Explainable Student Risk Analytics</h1>
+            <h1>Academic Risk Command Center</h1>
             <p>
-                A reproducible early-warning prototype that compares machine-learning models,
-                evaluates subgroup performance, explains individual predictions and reports limitations
-                instead of presenting a black-box score as a final academic decision.
+                A signature BTEC Level 6 decision-support prototype that does more than predict pass/fail: 
+                it audits data quality, compares models against a baseline, explains risk drivers, tests fairness, 
+                calibrates probabilities and simulates practical student-support interventions.
             </p>
             <div class="badge-row">
                 <span class="badge">Nested cross-validation</span>
@@ -726,11 +922,68 @@ if page == "🏠 Overview":
                 <span class="badge">Fairness analysis</span>
                 <span class="badge">SHAP explanations</span>
                 <span class="badge">Responsible AI</span>
+                <span class="badge">Intervention simulator</span>
+                <span class="badge">Evidence control room</span>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+    story_mode = st.radio(
+        "Choose presentation angle",
+        ["Executive story", "Technical proof", "Viva defence"],
+        horizontal=True,
+        help="This changes the front-end narrative without changing the model results.",
+    )
+    if story_mode == "Executive story":
+        st.markdown(
+            """
+            <div class="story-box">
+                <h3>From prediction to student support</h3>
+                <p>This prototype is designed as an academic-risk operations dashboard. It begins with data audit, trains leakage-safe models, compares them with a baseline, then turns predictions into explanations, fairness checks and support scenarios.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif story_mode == "Technical proof":
+        st.markdown(
+            """
+            <div class="story-box">
+                <h3>Technical credibility layer</h3>
+                <p>The app uses nested cross-validation, Macro-F1 model selection, out-of-fold predictions, threshold-cost analysis, calibration, SHAP and subgroup diagnostics. This is designed to avoid the common mistake of presenting an attractive dashboard without defensible validation.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="story-box">
+                <h3>Defence argument</h3>
+                <p>The central claim is deliberately cautious: the model provides moderate early-warning signals, not automatic decisions. The value of the project is the responsible ML workflow and deployed evidence system, not an exaggerated accuracy claim.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    cta_cols = st.columns(4)
+    with cta_cols[0]:
+        if st.button("🚀 Train models", width="stretch", type="primary"):
+            st.session_state.active_page = "🤖 Model Training"
+            st.rerun()
+    with cta_cols[1]:
+        if st.button("📈 Inspect results", width="stretch"):
+            st.session_state.active_page = "📈 Results"
+            st.rerun()
+    with cta_cols[2]:
+        if st.button("🎛️ Simulate support", width="stretch"):
+            st.session_state.active_page = "🎛️ Intervention Simulator"
+            st.rerun()
+    with cta_cols[3]:
+        if st.button("🧭 Open evidence", width="stretch"):
+            st.session_state.active_page = "🧭 Evidence Control Room"
+            st.rerun()
 
     cols = st.columns(5)
     cols[0].metric("Students", len(df))
@@ -745,6 +998,20 @@ if page == "🏠 Overview":
         "Risk recall",
         f"{best_risk_recall:.3f}" if best_risk_recall is not None else "—",
     )
+
+    st.markdown("### Signature value layers")
+    layer_cols = st.columns(4)
+    layer_cards = [
+        ("Decision workflow", "The dashboard is structured around how an academic adviser would use evidence: audit → train → explain → review → intervene."),
+        ("Interactive front-end", "Navigation, story angle, threshold sliders and intervention controls change the displayed evidence rather than showing static charts."),
+        ("Responsible AI", "The project openly separates prediction from decision-making and highlights missed-risk cases, fairness and validity."),
+        ("BTEC evidence", "Outputs are exportable and aligned with methodology, analysis, discussion, validity and viva defence."),
+    ]
+    for col, (title, text) in zip(layer_cols, layer_cards):
+        with col:
+            st.markdown(f'<div class="executive-card"><h4>{title}</h4><p>{text}</p></div>', unsafe_allow_html=True)
+
+    st.markdown("---")
 
     left, right = st.columns([1.18, 1])
     with left:
@@ -2472,6 +2739,241 @@ elif page == "🔍 Prediction":
                 width="stretch",
             )
 
+
+
+# ════════════════════════════════════════
+# 🎛️ INTERVENTION SIMULATOR
+# ════════════════════════════════════════
+elif page == "🎛️ Intervention Simulator":
+    st.markdown('<span class="section-kicker">Decision support layer</span>', unsafe_allow_html=True)
+    st.title("🎛️ Intervention Simulator")
+    st.markdown(
+        """
+        <div class="signature-strip">
+        <strong>What makes this version different:</strong> the app does not stop at a prediction. It shows how an adviser could test realistic support scenarios before deciding how to help a student.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if bundle:
+        sim_model_name = bundle["best_model_name"]
+        sim_model = bundle["best_pipes"][sim_model_name]
+        sim_source = "Best nested-CV model from the current session"
+    elif "optuna_models" in st.session_state and st.session_state["optuna_models"]:
+        sim_model_name = next(iter(st.session_state["optuna_models"]))
+        sim_model = st.session_state["optuna_models"][sim_model_name]
+        sim_source = "Optuna-tuned model from the current session"
+    else:
+        sim_model_name = "Logistic Regression (default)"
+        sim_model = get_cached_default_model(X, y)
+        sim_source = "Fallback model for demonstration"
+
+    col_a, col_b, col_c = st.columns([1.4, 1, 1])
+    with col_a:
+        st.info(f"Using: **{sim_model_name}** · {sim_source}")
+    with col_b:
+        threshold = st.slider("Pass threshold", 0.10, 0.90, 0.50, 0.05, key="sim_threshold")
+    with col_c:
+        row_idx = st.number_input("Student row index", min_value=0, max_value=len(X)-1, value=0, step=1)
+
+    base_student = X.iloc[[int(row_idx)]].copy()
+
+    def _scenario_row(base: pd.DataFrame, label: str, updates: dict | None = None) -> dict:
+        row = base.copy()
+        updates = updates or {}
+        for key, val in updates.items():
+            if key in row.columns and val is not None:
+                row.loc[row.index[0], key] = val
+        pass_prob = float(sim_model.predict_proba(row)[0, 1])
+        risk_prob = 1 - pass_prob
+        signal = "Pass" if pass_prob >= threshold else "At risk"
+        return {
+            "Scenario": label,
+            "Pass probability": pass_prob,
+            "Risk probability": risk_prob,
+            "Signal": signal,
+        }
+
+    current_absences = int(base_student["absences"].iloc[0]) if "absences" in base_student.columns else 0
+    current_study = int(base_student["studytime"].iloc[0]) if "studytime" in base_student.columns else 1
+    current_failures = int(base_student["failures"].iloc[0]) if "failures" in base_student.columns else 0
+
+    st.markdown("### Interactive support controls")
+    st.markdown(
+        """
+        <div class="control-panel">
+            <h3>Adviser scenario builder</h3>
+            <p>Move the controls below to create a realistic support plan. The interface updates the simulated risk estimate immediately after each change.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    ctrl1, ctrl2, ctrl3, ctrl4 = st.columns(4)
+    with ctrl1:
+        attendance_reduction = st.slider("Attendance improvement", 0, 80, 45, 5, help="Percentage reduction in absences for the simulated support plan.")
+    with ctrl2:
+        study_boost = st.slider("Study-time boost", 0, 3, 1, 1, help="Increase in studytime level, capped at 4.")
+    with ctrl3:
+        reduce_failures = st.toggle("Recovery plan", value=True, help="Simulates reducing the failures count by one where possible.")
+    with ctrl4:
+        enable_support = st.toggle("Activate support services", value=True, help="Sets family/school support fields to yes where those features exist.")
+
+    combined_updates = {
+        "absences": max(0, int(current_absences * (1 - attendance_reduction / 100))),
+        "studytime": min(4, current_study + int(study_boost)),
+    }
+    if enable_support and "famsup" in X.columns:
+        combined_updates["famsup"] = "yes"
+    if enable_support and "schoolsup" in X.columns:
+        combined_updates["schoolsup"] = "yes"
+    if reduce_failures and "failures" in X.columns:
+        combined_updates["failures"] = max(0, current_failures - 1)
+
+    scenarios = [
+        _scenario_row(base_student, "Current profile"),
+        _scenario_row(base_student, "Attendance support", {"absences": max(0, int(current_absences * 0.65))}),
+        _scenario_row(base_student, "Study-time coaching", {"studytime": min(4, current_study + 1)}),
+        _scenario_row(base_student, "Custom adviser plan", combined_updates),
+    ]
+    if "failures" in X.columns:
+        scenarios.append(_scenario_row(base_student, "Recovery plan after failures", {"failures": max(0, current_failures - 1), "studytime": min(4, current_study + 1)}))
+
+    scenario_df = pd.DataFrame(scenarios)
+    current_risk = float(scenario_df.iloc[0]["Risk probability"])
+    preview_cols = st.columns(min(4, len(scenario_df)))
+    for col, (_, row) in zip(preview_cols, scenario_df.head(4).iterrows()):
+        delta = current_risk - float(row["Risk probability"])
+        delta_class = "delta-good" if delta >= 0 else "delta-bad"
+        scenario_name = row["Scenario"]
+        risk_value = float(row["Risk probability"])
+        signal_value = row["Signal"]
+        with col:
+            st.markdown(
+                f"""<div class="scenario-card">
+                    <b>{scenario_name}</b><br>
+                    <span class="small-note">Risk probability</span>
+                    <h3 style="margin:.2rem 0;color:#0f172a;">{risk_value:.1%}</h3>
+                    <span class="{delta_class}">{delta:+.1%} vs current</span><br>
+                    <span class="small-note">Signal: {signal_value}</span>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+    st.subheader("Scenario comparison")
+    display_df = scenario_df.copy()
+    display_df["Pass probability"] = display_df["Pass probability"].map(lambda v: f"{v:.3f}")
+    display_df["Risk probability"] = display_df["Risk probability"].map(lambda v: f"{v:.3f}")
+    st.dataframe(arrow_safe_df(display_df), width="stretch", hide_index=True)
+
+    fig = px.bar(
+        scenario_df,
+        x="Scenario",
+        y="Risk probability",
+        color="Signal",
+        text=scenario_df["Risk probability"].map(lambda v: f"{v:.2f}"),
+        title="How support scenarios change estimated risk",
+    )
+    fig.update_layout(yaxis_range=[0, 1], xaxis_title="", yaxis_title="Estimated risk probability")
+    st.plotly_chart(fig, width="stretch")
+
+    best_scenario = scenario_df.sort_values("Risk probability").iloc[0]
+    delta = float(scenario_df.iloc[0]["Risk probability"] - best_scenario["Risk probability"])
+    if delta > 0.05:
+        st.success(
+            f"Most promising simulated plan: **{best_scenario['Scenario']}**, reducing estimated risk by approximately **{delta:.1%}** compared with the current profile."
+        )
+    else:
+        st.warning(
+            "The scenarios did not substantially reduce predicted risk. This is a signal for human review, not a reason to ignore the student."
+        )
+
+    st.markdown("### Adviser notes generated for viva/demo")
+    st.markdown(
+        f"""
+        - Current row: **{int(row_idx)}**  
+        - Current absences: **{current_absences}**  
+        - Current studytime level: **{current_study}**  
+        - Previous failures: **{current_failures}**  
+        - The simulator is **counterfactual-support oriented**, not causal proof. It helps demonstrate how an adviser could compare support options before acting.
+        """
+    )
+
+    st.download_button(
+        "📥 Download intervention simulation CSV",
+        data=scenario_df.to_csv(index=False).encode("utf-8"),
+        file_name="intervention_simulation.csv",
+        mime="text/csv",
+        width="stretch",
+    )
+
+# ════════════════════════════════════════
+# 🧭 EVIDENCE CONTROL ROOM
+# ════════════════════════════════════════
+elif page == "🧭 Evidence Control Room":
+    st.markdown('<span class="section-kicker">Distinction-focused project governance</span>', unsafe_allow_html=True)
+    st.title("🧭 Evidence Control Room")
+    st.caption("A single page that shows the examiner the project is not just an app, but an auditable digital-technology artefact.")
+
+    st.markdown(
+        """
+        <div class="journey">
+            <div class="journey-step"><b>1 · Data audit</b><span>Source, target, leakage control and feature policy.</span></div>
+            <div class="journey-step"><b>2 · Model testing</b><span>Baseline, nested CV, risk-focused metrics and statistics.</span></div>
+            <div class="journey-step"><b>3 · Responsible AI</b><span>Fairness, calibration, SHAP and human oversight.</span></div>
+            <div class="journey-step"><b>4 · Deployment</b><span>Streamlit, GitHub, evidence exports and reproducible artefacts.</span></div>
+            <div class="journey-step"><b>5 · Reflection</b><span>Limitations, improvement plan and professional development.</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    readiness_rows = [
+        {"Area": "Unique visual identity", "Evidence in app": "Custom command-centre layout, branded cards, workflow strip and decision-support pages", "Status": "Strong"},
+        {"Area": "Technical depth", "Evidence in app": "Nested CV, baseline, Optuna, risk-focused metrics, threshold-cost analysis", "Status": "Strong"},
+        {"Area": "Responsible AI", "Evidence in app": "Fairness diagnostics, calibration, SHAP, model card and usage warnings", "Status": "Strong"},
+        {"Area": "Practical value", "Evidence in app": "Intervention Simulator converts predictions into support planning", "Status": "Strong"},
+        {"Area": "Reproducibility", "Evidence in app": "Evidence pack, CSV exports, model download, environment metadata", "Status": "Strong"},
+        {"Area": "External validity", "Evidence in app": "Clearly states UCI dataset limitations and need for local PDP validation", "Status": "Moderate"},
+        {"Area": "Production readiness", "Evidence in app": "Prototype only; no live SIS integration or real student deployment", "Status": "Limited"},
+    ]
+    readiness_df = pd.DataFrame(readiness_rows)
+    st.dataframe(arrow_safe_df(readiness_df), width="stretch", hide_index=True)
+
+    status_counts = readiness_df["Status"].value_counts().reset_index()
+    status_counts.columns = ["Status", "Count"]
+    fig = px.pie(status_counts, names="Status", values="Count", title="Evidence strength overview", hole=.55)
+    st.plotly_chart(fig, width="stretch")
+
+    if bundle:
+        best = bundle["best_model_name"]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Best model", best)
+        c2.metric("Macro-F1", f"{metric_mean(bundle, best, 'Macro-F1'):.3f}")
+        c3.metric("Risk recall", f"{metric_mean(bundle, best, 'Risk Recall'):.3f}")
+        c4.metric("ROC-AUC", f"{metric_mean(bundle, best, 'AUC-ROC'):.3f}")
+    else:
+        st.warning("Train models first to populate live evidence metrics.")
+
+    st.markdown("### What this app can claim")
+    st.success("It can claim to be a transparent, research-informed academic prototype for early-warning analysis.")
+    st.markdown("### What this app must not claim")
+    st.error("It must not claim production readiness, causal proof or direct suitability for PDP University without local validation.")
+
+    viva_cards = pd.DataFrame([
+        {"Likely viva question": "What makes your app different from a basic Streamlit dashboard?", "Answer focus": "It includes risk-cost simulation, fairness diagnostics, calibration, SHAP and an auditable evidence pack."},
+        {"Likely viva question": "Why should an examiner trust the evaluation?", "Answer focus": "Nested CV separates tuning and testing; baseline and statistical tests reduce overclaiming."},
+        {"Likely viva question": "What is the biggest limitation?", "Answer focus": "External validity: the dataset is not PDP University data and must be locally validated."},
+    ])
+    st.dataframe(arrow_safe_df(viva_cards), width="stretch", hide_index=True)
+
+    st.download_button(
+        "📥 Download evidence-control checklist",
+        data=readiness_df.to_csv(index=False).encode("utf-8"),
+        file_name="distinction_evidence_control_room.csv",
+        mime="text/csv",
+        width="stretch",
+    )
 
 # ℹ️ MODEL CARD
 # ════════════════════════════════════════
