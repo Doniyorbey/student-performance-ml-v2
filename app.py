@@ -843,13 +843,13 @@ with st.sidebar:
     st.markdown("## 🧠 Academic Risk Command Center")
     st.caption("Signature dashboard · responsible AI · BTEC evidence")
     st.markdown("**PDP University · BTEC Level 6 · 2026**")
-    st.markdown("**Eltezarv Doniyorbek · Group 22-305**")
+    st.markdown("**Eltezarov Doniyorbek · Group 22-305**")
     st.markdown(
         f"""<div class="nav-card">
             <div class="nav-title">Current module</div>
             <div class="nav-active">{st.session_state.active_page}</div>
             <span class="small-note">Use the command navigation below. Each click changes the working mode of the dashboard.</span>
-        </div>""",F
+        </div>""",
         unsafe_allow_html=True,
     )
 
