@@ -843,7 +843,7 @@ with st.sidebar:
     st.markdown("## Student Performance ML")
     st.caption("Model optimisation · validation · evidence")
     st.markdown("**PDP University · BTEC Level 6 · 2026**")
-    st.markdown("**Eltezorov Doriyorbek · Group 22-305**")
+    st.markdown("**Eltezarov Doniyorbek · Group 22-305**")
     st.markdown(
         f"""<div class="nav-card">
             <div class="nav-title">Current module</div>
