@@ -57,7 +57,7 @@ from ml_pipeline import (
 
 st.set_page_config(
     page_title="Student Performance ML",
-    page_icon="🎓",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -811,44 +811,44 @@ cat_cols, num_cols = split_columns(X)
 preprocessor = get_preprocessor(cat_cols, num_cols)
 
 PAGES = [
-    "🏠 Overview",
-    "📊 EDA & Data Audit",
-    "⚡ Optuna Optimization",
-    "🤖 Model Training",
-    "📈 Results",
-    "⚖️ Fairness Analysis",
-    "🧪 Validity & Error Analysis",
-    "🔬 SHAP Values",
-    "🔍 Prediction",
-    "🎛️ Intervention Simulator",
-    "🧭 Evidence Control Room",
-    "ℹ️ Model Card",
-    "📚 Research Evidence",
+    "Overview",
+    "EDA & Data Audit",
+    "Optuna Optimization",
+    "Model Training",
+    "Results",
+    "Fairness Analysis",
+    "Validity & Error Analysis",
+    "SHAP Values",
+    "Prediction",
+    "Intervention Simulator",
+    "Evidence Control",
+    "Model Card",
+    "Research Evidence",
 ]
 
 NAV_GROUPS = {
-    "Operate": ["🏠 Overview", "📊 EDA & Data Audit", "🤖 Model Training", "📈 Results"],
-    "Trust": ["⚖️ Fairness Analysis", "🧪 Validity & Error Analysis", "🔬 SHAP Values"],
-    "Use": ["🔍 Prediction", "🎛️ Intervention Simulator"],
-    "Evidence": ["🧭 Evidence Control Room", "ℹ️ Model Card", "📚 Research Evidence"],
-    "Optional": ["⚡ Optuna Optimization"],
+    "Operate": ["Overview", "EDA & Data Audit", "Model Training", "Results"],
+    "Trust": ["Fairness Analysis", "Validity & Error Analysis", "SHAP Values"],
+    "Use": ["Prediction", "Intervention Simulator"],
+    "Evidence": ["Evidence Control", "Model Card", "Research Evidence"],
+    "Optional": ["Optuna Optimization"],
 }
 
 if "active_page" not in st.session_state:
-    st.session_state.active_page = "🏠 Overview"
+    st.session_state.active_page = "Overview"
 if st.session_state.active_page not in PAGES:
-    st.session_state.active_page = "🏠 Overview"
+    st.session_state.active_page = "Overview"
 
 with st.sidebar:
-    st.markdown("## 🧠 Academic Risk Command Center")
-    st.caption("Signature dashboard · responsible AI · BTEC evidence")
+    st.markdown("## Student Performance ML")
+    st.caption("Model optimisation · validation · evidence")
     st.markdown("**PDP University · BTEC Level 6 · 2026**")
-    st.markdown("**Eltezarov Doniyorbek · Group 22-305**")
+    st.markdown("**Eltezorov Doriyorbek · Group 22-305**")
     st.markdown(
         f"""<div class="nav-card">
             <div class="nav-title">Current module</div>
             <div class="nav-active">{st.session_state.active_page}</div>
-            <span class="small-note">Use the command navigation below. Each click changes the working mode of the dashboard.</span>
+            <span class="small-note">Use the navigation below to review each stage of the modelling workflow.</span>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -884,7 +884,7 @@ risk_state = f"{metric_mean(bundle, best_state, 'Risk Recall'):.3f}" if bundle e
 st.markdown(
     f"""<div class="top-status-bar">
         <div class="top-status-grid">
-            <div><span class="pulse-dot"></span><b>Academic Risk Command Center</b></div>
+            <div><span class="pulse-dot"></span><b>Student Performance Risk Modelling System</b></div>
             <div class="status-chip">Experiment: <strong>{trained_state}</strong></div>
             <div class="status-chip">Best model: <strong>{best_state}</strong></div>
             <div class="status-chip">Macro-F1: <strong>{macro_state}</strong></div>
@@ -895,9 +895,9 @@ st.markdown(
 )
 
 # ════════════════════════════════════════
-# 🏠 OVERVIEW
+#  OVERVIEW
 # ════════════════════════════════════════
-if page == "🏠 Overview":
+if page == "Overview":
     best_name = bundle["best_model_name"] if bundle else "Not trained"
     best_macro = metric_mean(bundle, best_name, "Macro-F1") if bundle else None
     best_risk_recall = metric_mean(bundle, best_name, "Risk Recall") if bundle else None
@@ -909,21 +909,19 @@ if page == "🏠 Overview":
     st.markdown(
         """
         <div class="hero">
-            <span class="eyebrow">Pearson BTEC Level 6 · Applied AI Capstone</span>
-            <h1>Academic Risk Command Center</h1>
+            <span class="eyebrow">Pearson BTEC Level 6 · Machine Learning Project</span>
+            <h1>Student Performance Risk Modelling System</h1>
             <p>
-                A signature BTEC Level 6 decision-support prototype that does more than predict pass/fail: 
-                it audits data quality, compares models against a baseline, explains risk drivers, tests fairness, 
-                calibrates probabilities and simulates practical student-support interventions.
+                A machine-learning prototype for early identification of students at academic risk. The project audits data quality, compares models with a baseline, evaluates risk-focused metrics, analyses probability thresholds and explains model behaviour.
             </p>
             <div class="badge-row">
                 <span class="badge">Nested cross-validation</span>
                 <span class="badge">Risk-focused Macro-F1</span>
                 <span class="badge">Fairness analysis</span>
                 <span class="badge">SHAP explanations</span>
-                <span class="badge">Responsible AI</span>
-                <span class="badge">Intervention simulator</span>
-                <span class="badge">Evidence control room</span>
+                <span class="badge">Responsible use</span>
+                <span class="badge">Support scenario analysis</span>
+                <span class="badge">Project evidence</span>
             </div>
         </div>
         """,
@@ -931,27 +929,27 @@ if page == "🏠 Overview":
     )
 
     story_mode = st.radio(
-        "Choose presentation angle",
-        ["Executive story", "Technical proof", "Viva defence"],
+        "Choose explanation focus",
+        ["Project overview", "Technical validation", "Assessment explanation"],
         horizontal=True,
         help="This changes the front-end narrative without changing the model results.",
     )
-    if story_mode == "Executive story":
+    if story_mode == "Project overview":
         st.markdown(
             """
             <div class="story-box">
-                <h3>From prediction to student support</h3>
-                <p>This prototype is designed as an academic-risk operations dashboard. It begins with data audit, trains leakage-safe models, compares them with a baseline, then turns predictions into explanations, fairness checks and support scenarios.</p>
+                <h3>From prediction to academic support</h3>
+                <p>This prototype begins with data audit, trains leakage-safe models, compares them with a baseline, and then interprets predictions using threshold analysis, subgroup checks and explanation methods.</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
-    elif story_mode == "Technical proof":
+    elif story_mode == "Technical validation":
         st.markdown(
             """
             <div class="story-box">
-                <h3>Technical credibility layer</h3>
-                <p>The app uses nested cross-validation, Macro-F1 model selection, out-of-fold predictions, threshold-cost analysis, calibration, SHAP and subgroup diagnostics. This is designed to avoid the common mistake of presenting an attractive dashboard without defensible validation.</p>
+                <h3>Technical validation layer</h3>
+                <p>The application uses nested cross-validation, Macro-F1 model selection, out-of-fold predictions, threshold-cost analysis, calibration, SHAP and subgroup diagnostics. The purpose is to make the evaluation defensible rather than dependent on a single accuracy score.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -960,8 +958,8 @@ if page == "🏠 Overview":
         st.markdown(
             """
             <div class="story-box">
-                <h3>Defence argument</h3>
-                <p>The central claim is deliberately cautious: the model provides moderate early-warning signals, not automatic decisions. The value of the project is the responsible ML workflow and deployed evidence system, not an exaggerated accuracy claim.</p>
+                <h3>Assessment argument</h3>
+                <p>The central claim is deliberately cautious: the model provides moderate early-warning signals, not automatic decisions. The academic value of the project is model design, optimisation, validation and critical evaluation.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -969,20 +967,20 @@ if page == "🏠 Overview":
 
     cta_cols = st.columns(4)
     with cta_cols[0]:
-        if st.button("🚀 Train models", width="stretch", type="primary"):
-            st.session_state.active_page = "🤖 Model Training"
+        if st.button("Train models", width="stretch", type="primary"):
+            st.session_state.active_page = "Model Training"
             st.rerun()
     with cta_cols[1]:
-        if st.button("📈 Inspect results", width="stretch"):
-            st.session_state.active_page = "📈 Results"
+        if st.button("Inspect results", width="stretch"):
+            st.session_state.active_page = "Results"
             st.rerun()
     with cta_cols[2]:
-        if st.button("🎛️ Simulate support", width="stretch"):
-            st.session_state.active_page = "🎛️ Intervention Simulator"
+        if st.button("Analyse support scenarios", width="stretch"):
+            st.session_state.active_page = "Intervention Simulator"
             st.rerun()
     with cta_cols[3]:
-        if st.button("🧭 Open evidence", width="stretch"):
-            st.session_state.active_page = "🧭 Evidence Control Room"
+        if st.button("Open evidence", width="stretch"):
+            st.session_state.active_page = "Evidence Control"
             st.rerun()
 
     cols = st.columns(5)
@@ -999,13 +997,13 @@ if page == "🏠 Overview":
         f"{best_risk_recall:.3f}" if best_risk_recall is not None else "—",
     )
 
-    st.markdown("### Signature value layers")
+    st.markdown("### Project contribution layers")
     layer_cols = st.columns(4)
     layer_cards = [
-        ("Decision workflow", "The dashboard is structured around how an academic adviser would use evidence: audit → train → explain → review → intervene."),
-        ("Interactive front-end", "Navigation, story angle, threshold sliders and intervention controls change the displayed evidence rather than showing static charts."),
-        ("Responsible AI", "The project openly separates prediction from decision-making and highlights missed-risk cases, fairness and validity."),
-        ("BTEC evidence", "Outputs are exportable and aligned with methodology, analysis, discussion, validity and viva defence."),
+        ("Decision workflow", "The system is structured around the modelling workflow: audit, train, evaluate, explain and review."),
+        ("Interactive interface", "Navigation, threshold sliders and support-scenario controls make the evaluation interactive rather than static."),
+        ("Responsible use", "The project separates prediction from decision-making and highlights missed-risk cases, subgroup performance and validity limits."),
+        ("Assessment evidence", "Outputs are exportable and aligned with methodology, analysis, discussion, validity and assessment criteria."),
     ]
     for col, (title, text) in zip(layer_cols, layer_cards):
         with col:
@@ -1068,9 +1066,9 @@ if page == "🏠 Overview":
     )
     st.dataframe(arrow_safe_df(workflow), width="stretch", hide_index=True)
 
-# 📊 EDA
+#  EDA
 # ════════════════════════════════════════
-elif page == "📊 EDA & Data Audit":
+elif page == "EDA & Data Audit":
     render_page_header(
         "DATA UNDERSTANDING",
         "Exploratory Data Analysis",
@@ -1078,7 +1076,7 @@ elif page == "📊 EDA & Data Audit":
     )
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["📈 Distribution", "🔗 Correlation", "📦 Boxplots", "📋 Dataset", "✅ Data Quality"]
+        [" Distribution", " Correlation", " Boxplots", " Dataset", " Data Quality"]
     )
 
     with tab1:
@@ -1194,7 +1192,7 @@ elif page == "📊 EDA & Data Audit":
         c2.metric("Columns", df.shape[1])
         c3.metric("Missing cells", int(df.isna().sum().sum()))
         st.download_button(
-            "📥 Dataset CSV",
+            " Dataset CSV",
             data=df.to_csv(index=False).encode("utf-8"),
             file_name="student_dataset_with_target.csv",
             mime="text/csv",
@@ -1231,10 +1229,10 @@ elif page == "📊 EDA & Data Audit":
             st.info("No missing values were detected in the source file.")
 
 # ════════════════════════════════════════
-# ⚡ OPTUNA
+#  OPTUNA
 # ════════════════════════════════════════
-elif page == "⚡ Optuna Optimization":
-    st.title("⚡ Optuna Hyperparameter Optimization")
+elif page == "Optuna Optimization":
+    st.title("Optuna Hyperparameter Optimisation")
     st.divider()
     st.info(
         "Preprocessing is fitted independently inside each cross-validation fold, "
@@ -1247,7 +1245,7 @@ elif page == "⚡ Optuna Optimization":
     )
     n_trials = st.slider("Number of trials", 10, 100, 30, 5)
 
-    if st.button("🚀 Run Optuna optimisation", type="primary", width="stretch"):
+    if st.button(" Run Optuna optimisation", type="primary", width="stretch"):
         import optuna
 
         optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -1370,9 +1368,9 @@ elif page == "⚡ Optuna Optimization":
                 st.caption("There are not enough completed trials to estimate parameter importance reliably.")
 
 # ════════════════════════════════════════
-# 🤖 MODEL TRAINING
+#  MODEL TRAINING
 # ════════════════════════════════════════
-elif page == "🤖 Model Training":
+elif page == "Model Training":
     render_page_header(
         "MODEL DEVELOPMENT",
         "Nested Cross-Validation Experiment",
@@ -1381,11 +1379,11 @@ elif page == "🤖 Model Training":
 
     mode = st.radio(
         "Computation mode",
-        ["⚡ Quick — 3 outer × 3 inner", "🔬 Full — 5 outer × 5 inner"],
+        ["Quick — 3 outer × 3 inner", "Full — 5 outer × 5 inner"],
         horizontal=True,
         help="Quick is suitable for live demonstration. Full provides the stronger final experiment but takes longer.",
     )
-    if mode.startswith("⚡"):
+    if mode.startswith("Quick"):
         outer_splits, inner_splits = 3, 3
         st.info(
             "Quick mode: six classifiers plus a baseline. Use this to verify the complete application before the viva."
@@ -1407,7 +1405,7 @@ elif page == "🤖 Model Training":
         unsafe_allow_html=True,
     )
 
-    if st.button("🚀 Train and evaluate all models", type="primary", width="stretch"):
+    if st.button(" Train and evaluate all models", type="primary", width="stretch"):
         progress = st.progress(0)
         status = st.empty()
 
@@ -1479,7 +1477,7 @@ elif page == "🤖 Model Training":
         d1, d2 = st.columns(2)
         with d1:
             st.download_button(
-                "📦 Download selected model",
+                " Download selected model",
                 data=model_to_bytes(bundle["best_pipes"][best_name]),
                 file_name="best_student_risk_model.joblib",
                 mime="application/octet-stream",
@@ -1494,9 +1492,9 @@ elif page == "🤖 Model Training":
                 width="stretch",
             )
 
-# 📈 RESULTS
+#  RESULTS
 # ════════════════════════════════════════
-elif page == "📈 Results":
+elif page == "Results":
     render_page_header(
         "EVIDENCE AND FINDINGS",
         "Model Evaluation Dashboard",
@@ -1510,11 +1508,11 @@ elif page == "📈 Results":
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "🏆 Leaderboard",
-            "📊 Metric comparison",
+            "Metric comparison",
             "📉 ROC & risk PR",
             "🧩 Threshold & confusion",
             "🎯 Calibration",
-            "🧪 Confidence & statistics",
+            "Confidence & statistics",
         ]
     )
 
@@ -1544,7 +1542,7 @@ elif page == "📈 Results":
         d1, d2, d3 = st.columns(3)
         with d1:
             st.download_button(
-                "📥 Leaderboard CSV",
+                " Leaderboard CSV",
                 data=leaderboard.to_csv(index=False).encode("utf-8"),
                 file_name="model_leaderboard.csv",
                 mime="text/csv",
@@ -1779,7 +1777,7 @@ elif page == "📈 Results":
         rc3.metric("Missed-risk cases", int(recommended["Missed-risk cases"]))
         rc4.metric("False alarms", int(recommended["False alarms"]))
         st.download_button(
-            "📥 Download threshold-cost analysis",
+            "Download threshold-cost analysis",
             data=cost_df.to_csv(index=False).encode("utf-8"),
             file_name=f"threshold_cost_{selected.replace(' ', '_')}.csv",
             mime="text/csv",
@@ -1924,16 +1922,16 @@ elif page == "📈 Results":
                 hide_index=True,
             )
             st.download_button(
-                "📥 Download corrected pairwise tests",
+                "Download corrected pairwise tests",
                 data=pairwise_df.to_csv(index=False).encode("utf-8"),
                 file_name="pairwise_wilcoxon_holm.csv",
                 mime="text/csv",
                 width="stretch",
             )
 
-# ⚖️ FAIRNESS ANALYSIS
+#  FAIRNESS ANALYSIS
 # ════════════════════════════════════════
-elif page == "⚖️ Fairness Analysis":
+elif page == "Fairness Analysis":
     render_page_header(
         "RESPONSIBLE AI",
         "Fairness and Subgroup Performance",
@@ -2076,7 +2074,7 @@ elif page == "⚖️ Fairness Analysis":
         )
 
     st.download_button(
-        "📥 Download subgroup evidence",
+        "Download subgroup evidence",
         data=subgroup_results.to_csv(index=False).encode("utf-8"),
         file_name=f"fairness_{group_feature}_{fairness_model.replace(' ', '_')}.csv",
         mime="text/csv",
@@ -2085,9 +2083,9 @@ elif page == "⚖️ Fairness Analysis":
 
 
 # ════════════════════════════════════════
-# 🧪 VALIDITY & ERROR ANALYSIS
+#  VALIDITY & ERROR ANALYSIS
 # ════════════════════════════════════════
-elif page == "🧪 Validity & Error Analysis":
+elif page == "Validity & Error Analysis":
     render_page_header(
         "DISTINCTION EVIDENCE",
         "Validity, Reliability and Error Analysis",
@@ -2145,11 +2143,11 @@ elif page == "🧪 Validity & Error Analysis":
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
-            "🚨 Critical errors",
-            "📊 Error profiles",
+            " Critical errors",
+            "Error profiles",
             "📏 Confidence intervals",
-            "✅ Validity assessment",
-            "📚 Learning curve",
+            " Validity assessment",
+            "Learning curve",
         ]
     )
 
@@ -2203,7 +2201,7 @@ elif page == "🧪 Validity & Error Analysis":
                 hide_index=True,
             )
             st.download_button(
-                "📥 Download missed-risk cases",
+                "Download missed-risk cases",
                 data=missed.to_csv(index=False).encode("utf-8"),
                 file_name="missed_risk_cases.csv",
                 mime="text/csv",
@@ -2385,7 +2383,7 @@ elif page == "🧪 Validity & Error Analysis":
                     "The final learning-curve gap is relatively controlled. External validation is still required before deployment."
                 )
             st.download_button(
-                "📥 Download learning-curve data",
+                "Download learning-curve data",
                 data=learning_df.to_csv(index=False).encode("utf-8"),
                 file_name=f"learning_curve_{selected_model.replace(' ', '_')}.csv",
                 mime="text/csv",
@@ -2393,9 +2391,9 @@ elif page == "🧪 Validity & Error Analysis":
             )
 
 
-# 🔬 SHAP
+#  SHAP
 # ════════════════════════════════════════
-elif page == "🔬 SHAP Values":
+elif page == "SHAP Values":
     render_page_header(
         "EXPLAINABLE AI",
         "Global and Individual SHAP Explanations",
@@ -2409,7 +2407,7 @@ elif page == "🔬 SHAP Values":
         "SHAP sample size", 30, min(200, len(X)), min(100, len(X)), 10
     )
 
-    if st.button("🔬 Calculate SHAP explanations", type="primary", width="stretch"):
+    if st.button("Calculate SHAP explanations", type="primary", width="stretch"):
         import shap
 
         with st.spinner("Calculating SHAP values..."):
@@ -2474,7 +2472,7 @@ elif page == "🔬 SHAP Values":
         ).sort_values("Mean absolute SHAP", ascending=False)
 
         tab1, tab2, tab3 = st.tabs(
-            ["📊 Global importance", "🐝 Direction and spread", "👤 Individual explanation"]
+            ["Global importance", "Direction and spread", "Individual explanation"]
         )
         with tab1:
             plt.figure(figsize=(10, 7))
@@ -2488,7 +2486,7 @@ elif page == "🔬 SHAP Values":
                 hide_index=True,
             )
             st.download_button(
-                "📥 Download SHAP importance",
+                "Download SHAP importance",
                 data=importance_df.to_csv(index=False).encode("utf-8"),
                 file_name="shap_global_importance.csv",
                 mime="text/csv",
@@ -2548,9 +2546,9 @@ elif page == "🔬 SHAP Values":
                 )
 
 
-# 🔍 PREDICTION
+#  PREDICTION
 # ════════════════════════════════════════
-elif page == "🔍 Prediction":
+elif page == "Prediction":
     render_page_header(
         "DECISION SUPPORT",
         "Individual Student Risk Estimate",
@@ -2732,7 +2730,7 @@ elif page == "🔍 Prediction":
             prediction_record["risk_probability"] = risk_probability
             prediction_record["prediction"] = "Pass" if prediction == 1 else "At risk"
             st.download_button(
-                "📥 Download prediction record",
+                "Download prediction record",
                 data=prediction_record.to_csv(index=False).encode("utf-8"),
                 file_name="student_risk_prediction.csv",
                 mime="text/csv",
@@ -2742,11 +2740,11 @@ elif page == "🔍 Prediction":
 
 
 # ════════════════════════════════════════
-# 🎛️ INTERVENTION SIMULATOR
+#  INTERVENTION SIMULATOR
 # ════════════════════════════════════════
-elif page == "🎛️ Intervention Simulator":
+elif page == "Intervention Simulator":
     st.markdown('<span class="section-kicker">Decision support layer</span>', unsafe_allow_html=True)
-    st.title("🎛️ Intervention Simulator")
+    st.title("Intervention Simulator")
     st.markdown(
         """
         <div class="signature-strip">
@@ -2803,7 +2801,7 @@ elif page == "🎛️ Intervention Simulator":
     st.markdown(
         """
         <div class="control-panel">
-            <h3>Adviser scenario builder</h3>
+            <h3>Support scenario builder</h3>
             <p>Move the controls below to create a realistic support plan. The interface updates the simulated risk estimate immediately after each change.</p>
         </div>
         """,
@@ -2895,12 +2893,12 @@ elif page == "🎛️ Intervention Simulator":
         - Current absences: **{current_absences}**  
         - Current studytime level: **{current_study}**  
         - Previous failures: **{current_failures}**  
-        - The simulator is **counterfactual-support oriented**, not causal proof. It helps demonstrate how an adviser could compare support options before acting.
+        - The simulator is **support-scenario oriented**, not causal proof. It helps demonstrate how an adviser could compare support options before acting.
         """
     )
 
     st.download_button(
-        "📥 Download intervention simulation CSV",
+        "Download support-scenario CSV",
         data=scenario_df.to_csv(index=False).encode("utf-8"),
         file_name="intervention_simulation.csv",
         mime="text/csv",
@@ -2908,19 +2906,19 @@ elif page == "🎛️ Intervention Simulator":
     )
 
 # ════════════════════════════════════════
-# 🧭 EVIDENCE CONTROL ROOM
+#  EVIDENCE CONTROL ROOM
 # ════════════════════════════════════════
-elif page == "🧭 Evidence Control Room":
-    st.markdown('<span class="section-kicker">Distinction-focused project governance</span>', unsafe_allow_html=True)
-    st.title("🧭 Evidence Control Room")
-    st.caption("A single page that shows the examiner the project is not just an app, but an auditable digital-technology artefact.")
+elif page == "Evidence Control":
+    st.markdown('<span class="section-kicker">Project evidence and governance</span>', unsafe_allow_html=True)
+    st.title("Evidence Control")
+    st.caption("A single page that summarises the project evidence, validation outputs and implementation limits.")
 
     st.markdown(
         """
         <div class="journey">
             <div class="journey-step"><b>1 · Data audit</b><span>Source, target, leakage control and feature policy.</span></div>
             <div class="journey-step"><b>2 · Model testing</b><span>Baseline, nested CV, risk-focused metrics and statistics.</span></div>
-            <div class="journey-step"><b>3 · Responsible AI</b><span>Fairness, calibration, SHAP and human oversight.</span></div>
+            <div class="journey-step"><b>3 · Responsible use</b><span>Fairness, calibration, SHAP and human oversight.</span></div>
             <div class="journey-step"><b>4 · Deployment</b><span>Streamlit, GitHub, evidence exports and reproducible artefacts.</span></div>
             <div class="journey-step"><b>5 · Reflection</b><span>Limitations, improvement plan and professional development.</span></div>
         </div>
@@ -2929,10 +2927,10 @@ elif page == "🧭 Evidence Control Room":
     )
 
     readiness_rows = [
-        {"Area": "Unique visual identity", "Evidence in app": "Custom command-centre layout, branded cards, workflow strip and decision-support pages", "Status": "Strong"},
+        {"Area": "Interface quality", "Evidence in app": "Structured interface, clear workflow and dedicated evaluation pages", "Status": "Strong"},
         {"Area": "Technical depth", "Evidence in app": "Nested CV, baseline, Optuna, risk-focused metrics, threshold-cost analysis", "Status": "Strong"},
-        {"Area": "Responsible AI", "Evidence in app": "Fairness diagnostics, calibration, SHAP, model card and usage warnings", "Status": "Strong"},
-        {"Area": "Practical value", "Evidence in app": "Intervention Simulator converts predictions into support planning", "Status": "Strong"},
+        {"Area": "Responsible use", "Evidence in app": "Fairness diagnostics, calibration, SHAP, model card and usage warnings", "Status": "Strong"},
+        {"Area": "Practical value", "Evidence in app": "Support scenario analysis links predictions to possible review actions", "Status": "Strong"},
         {"Area": "Reproducibility", "Evidence in app": "Evidence pack, CSV exports, model download, environment metadata", "Status": "Strong"},
         {"Area": "External validity", "Evidence in app": "Clearly states UCI dataset limitations and need for local PDP validation", "Status": "Moderate"},
         {"Area": "Production readiness", "Evidence in app": "Prototype only; no live SIS integration or real student deployment", "Status": "Limited"},
@@ -2968,16 +2966,16 @@ elif page == "🧭 Evidence Control Room":
     st.dataframe(arrow_safe_df(viva_cards), width="stretch", hide_index=True)
 
     st.download_button(
-        "📥 Download evidence-control checklist",
+        "Download evidence-control checklist",
         data=readiness_df.to_csv(index=False).encode("utf-8"),
         file_name="distinction_evidence_control_room.csv",
         mime="text/csv",
         width="stretch",
     )
 
-# ℹ️ MODEL CARD
+#  MODEL CARD
 # ════════════════════════════════════════
-elif page == "ℹ️ Model Card":
+elif page == "Model Card":
     render_page_header(
         "MODEL GOVERNANCE",
         "Model Card and Reproducibility Record",
@@ -3033,7 +3031,7 @@ elif page == "ℹ️ Model Card":
             {"Component": "Primary selection metric", "Implementation": "Macro-F1", "Purpose": "Avoid majority-class inflation"},
             {"Component": "Risk evidence", "Implementation": "Risk Recall, F1-Risk, missed-risk rate, risk PR-AUC", "Purpose": "Align evaluation with early-warning use"},
             {"Component": "Reliability evidence", "Implementation": "Fold results, bootstrap CIs, Wilcoxon test, calibration", "Purpose": "Quantify uncertainty and stability"},
-            {"Component": "Responsible AI", "Implementation": "Subgroup analysis, SHAP and human-review warning", "Purpose": "Expose disparity and black-box risks"},
+            {"Component": "Responsible use", "Implementation": "Subgroup analysis, SHAP and human-review warning", "Purpose": "Expose disparity and black-box risks"},
         ]
     )
     st.dataframe(arrow_safe_df(validation), width="stretch", hide_index=True)
@@ -3086,9 +3084,9 @@ elif page == "ℹ️ Model Card":
 
 
 # ════════════════════════════════════════
-# 📚 RESEARCH EVIDENCE
+#  RESEARCH EVIDENCE
 # ════════════════════════════════════════
-elif page == "📚 Research Evidence":
+elif page == "Research Evidence":
     render_page_header(
         "BTEC LEVEL 6 ALIGNMENT",
         "Research Evidence and Viva Map",
